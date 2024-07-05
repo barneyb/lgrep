@@ -11,7 +11,7 @@ const DEFAULT_LOG_PATTERN: &str = r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}([.,]
     arg_required_else_help = true,
     disable_help_flag = true
 )]
-pub struct Cli {
+pub(crate) struct Cli {
     /// Pattern to search
     pub pattern: Option<Regex>,
 
@@ -23,26 +23,31 @@ pub struct Cli {
     #[arg(short = 'e', long = "regexp", value_name = "pattern")]
     pub patterns: Vec<Regex>,
 
-    /// Perform case-insensitive matching. By default, lgrep is case-sensitive.
+    /// Perform case-insensitive matching.
     #[arg(
         short,
         long,
         long_help = "Perform case-insensitive matching. By default, lgrep is case-sensitive. Note \
                      that this flag applies to ALL patterns, including the log and, if provided, \
-                     the start/end patterns. If you need finer control, don't use this option, but \
-                     instead enable case-insensitivity within the pattern via a '(?i)' prefix. Or \
-                     turn it off (via '(?-i)') and on throughout the pattern. All of Rust's 'regex' \
-                     crate's capabilities are available (see \
+                     the start/end patterns. If you need finer control, enable case-insensitivity \
+                     within the pattern via a '(?i)' prefix (which is what this option does \
+                     internally). Or turn it off (via '(?-i)') and on throughout the pattern. All \
+                     of Rust's 'regex' crate's capabilities are available (see \
                      https://docs.rs/regex/latest/regex/#grouping-and-flags for the nitty-gritty)."
     )]
-    pub ignore_case: bool, // todo
+    pub ignore_case: bool,
 
     /// Stop reading the file after num matches
     #[arg(short, long, value_name = "num")]
     pub max_count: Option<usize>, // todo
 
-    /// Selected lines are those not matching any of the specified patterns
-    #[arg(short = 'v', long)]
+    /// Selected lines are those NOT matching any of the specified patterns
+    #[arg(
+        short = 'v',
+        long,
+        long_help = "Selected lines are those NOT matching any of the specified patterns. Does not \
+                     impact log/start/end patterns, only the main matching pattern(s)."
+    )]
     pub invert_match: bool, // todo
 
     /// Pattern identifying the start of a log record.
@@ -90,6 +95,35 @@ pub struct Cli {
     /// Print a brief help message.
     #[arg(long)]
     pub help: bool,
+}
+
+fn insensitive_re(re: Regex) -> Regex {
+    Regex::new(&*("(?i)".to_owned() + re.as_str())).unwrap()
+}
+
+fn opt_insensitive_re(opt_re: Option<Regex>) -> Option<Regex> {
+    if let Some(re) = opt_re {
+        Some(insensitive_re(re))
+    } else {
+        opt_re
+    }
+}
+
+impl Cli {
+    pub(crate) fn init(self) -> Cli {
+        if !self.ignore_case {
+            return self;
+        }
+        Cli {
+            ignore_case: false,
+            pattern: opt_insensitive_re(self.pattern),
+            patterns: self.patterns.into_iter().map(insensitive_re).collect(),
+            log_pattern: insensitive_re(self.log_pattern),
+            start: opt_insensitive_re(self.start),
+            end: opt_insensitive_re(self.end),
+            ..self
+        }
+    }
 }
 
 fn opt_re_match(opt_re: &Option<Regex>, hay: &str) -> bool {
@@ -151,6 +185,65 @@ mod tests {
                 help: false,
             }
         }
+
+        fn all_re() -> Cli {
+            Cli {
+                pattern: Some("P".parse().unwrap()),
+                patterns: vec!["Q".parse().unwrap(), "R".parse().unwrap()],
+                log_pattern: "T".parse().unwrap(),
+                start: Some("S".parse().unwrap()),
+                end: Some("E".parse().unwrap()),
+                ..Cli::empty()
+            }
+        }
+    }
+
+    #[test]
+    fn init_empty() {
+        let cli = Cli::all_re().init();
+        // pattern
+        assert_eq!(false, cli.is_match("0p0"));
+        assert_eq!(true, cli.is_match("0P0"));
+        // patterns
+        assert_eq!(false, cli.is_match("0q0"));
+        assert_eq!(true, cli.is_match("0Q0"));
+        assert_eq!(false, cli.is_match("0r0"));
+        assert_eq!(true, cli.is_match("0R0"));
+        // log_pattern
+        assert_eq!(false, cli.is_record_start("0t0"));
+        assert_eq!(true, cli.is_record_start("0T0"));
+        // start
+        assert_eq!(false, cli.is_start("0s0"));
+        assert_eq!(true, cli.is_start("0S0"));
+        // end
+        assert_eq!(false, cli.is_end("0e0"));
+        assert_eq!(true, cli.is_end("0E0"));
+    }
+
+    #[test]
+    fn init_everything() {
+        let cli = Cli {
+            ignore_case: true,
+            ..Cli::all_re()
+        }
+        .init();
+        // pattern
+        assert_eq!(true, cli.is_match("0p0"));
+        assert_eq!(true, cli.is_match("0P0"));
+        // patterns
+        assert_eq!(true, cli.is_match("0q0"));
+        assert_eq!(true, cli.is_match("0Q0"));
+        assert_eq!(true, cli.is_match("0r0"));
+        assert_eq!(true, cli.is_match("0R0"));
+        // log_pattern
+        assert_eq!(true, cli.is_record_start("0t0"));
+        assert_eq!(true, cli.is_record_start("0T0"));
+        // start
+        assert_eq!(true, cli.is_start("0s0"));
+        assert_eq!(true, cli.is_start("0S0"));
+        // end
+        assert_eq!(true, cli.is_end("0e0"));
+        assert_eq!(true, cli.is_end("0E0"));
     }
 
     #[test]
@@ -238,6 +331,7 @@ mod tests {
             ..Cli::empty()
         };
         assert_eq!(true, cli.is_match("bab"));
+        assert_eq!(false, cli.is_match("BAB"));
     }
 
     #[test]
@@ -249,6 +343,37 @@ mod tests {
         assert_eq!(true, cli.is_match("bab"));
         assert_eq!(true, cli.is_match("xxxaxxx"));
         assert_eq!(true, cli.is_match("xxxbxxx"));
+        assert_eq!(false, cli.is_match("BAB"));
+        assert_eq!(false, cli.is_match("XXXAXXX"));
+        assert_eq!(false, cli.is_match("XXXBXXX"));
+    }
+
+    #[test]
+    fn match_explicit_pattern_insensitive() {
+        let cli = Cli {
+            patterns: vec!["a".parse().unwrap()],
+            ignore_case: true,
+            ..Cli::empty()
+        }
+        .init();
+        assert_eq!(true, cli.is_match("bab"));
+        assert_eq!(true, cli.is_match("BAB"));
+    }
+
+    #[test]
+    fn match_explicit_patterns_insensitive() {
+        let cli = Cli {
+            patterns: vec!["a".parse().unwrap(), "b".parse().unwrap()],
+            ignore_case: true,
+            ..Cli::empty()
+        }
+        .init();
+        assert_eq!(true, cli.is_match("bab"));
+        assert_eq!(true, cli.is_match("xxxaxxx"));
+        assert_eq!(true, cli.is_match("xxxbxxx"));
+        assert_eq!(true, cli.is_match("BAB"));
+        assert_eq!(true, cli.is_match("XXXAXXX"));
+        assert_eq!(true, cli.is_match("XXXBXXX"));
     }
 
     #[test]
@@ -341,16 +466,5 @@ mod tests {
             ..Cli::empty()
         };
         assert_eq!(false, cli.is_record_start("definitely only a rabbit"));
-    }
-
-    #[test]
-    fn case_sensitivity_or_not() {
-        // todo
-        let mut re = Regex::new("a").unwrap();
-        assert_eq!(true, re.is_match("000a000"));
-        assert_eq!(false, re.is_match("000A000"));
-        re = Regex::new(&*(r"(?i)".to_owned() + re.as_str())).unwrap();
-        assert_eq!(true, re.is_match("000a000"));
-        assert_eq!(true, re.is_match("000A000"));
     }
 }

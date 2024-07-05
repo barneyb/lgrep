@@ -6,7 +6,7 @@ use cli::Cli;
 mod cli;
 
 pub fn run() -> Result<()> {
-    let args = Cli::parse();
+    let args = Cli::parse().init();
     // if no-filename (-h) without any patterns
     if args.no_filename && !args.has_patterns() {
         Cli::command()
