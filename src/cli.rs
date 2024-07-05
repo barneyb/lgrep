@@ -2,6 +2,8 @@ use clap::Parser;
 use regex::Regex;
 
 const DEFAULT_LOG_PATTERN: &str = r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}([.,]\d+)?";
+const DEFAULT_LABEL: &str = "(standard input)";
+pub const STD_IN_FILENAME: &str = "-";
 
 #[derive(Parser, Debug)]
 #[command(
@@ -16,11 +18,11 @@ pub(crate) struct Cli {
     pub pattern: Option<Regex>,
 
     /// File(s) to search. If omitted or '-', search STDIN.
-    #[arg(required = false, default_value = "-", hide_default_value = true)]
+    #[arg(required = false, default_value = STD_IN_FILENAME, hide_default_value = true)]
     pub files: Vec<String>, // todo
 
     /// Additional patterns to search
-    #[arg(short = 'e', long = "regexp", value_name = "pattern")]
+    #[arg(short = 'e', long = "regexp", value_name = "PATTERN")]
     pub patterns: Vec<Regex>,
 
     /// Perform case-insensitive matching.
@@ -38,7 +40,7 @@ pub(crate) struct Cli {
     pub ignore_case: bool,
 
     /// Stop reading the file after num matches
-    #[arg(short, long, value_name = "num")]
+    #[arg(short, long, value_name = "NUM")]
     pub max_count: Option<usize>, // todo
 
     /// Selected lines are those NOT matching any of the specified patterns
@@ -50,13 +52,16 @@ pub(crate) struct Cli {
     )]
     pub invert_match: bool,
 
+    /// Label to use in place of “(standard input)” for a file name where a file name would normally be printed.
+    #[arg(long, default_value = DEFAULT_LABEL, hide_default_value = true)]
+    pub label: String, // todo
+
     /// Pattern identifying the start of a log record.
     #[arg(
         long,
-        required = false,
         default_value = DEFAULT_LOG_PATTERN,
         hide_default_value = true,
-        value_name = "pattern",
+        value_name = "PATTERN",
         long_help = "Pattern identifying the start of a log record. By default, assumes log records \
                      start with an ISO-8601 datetime with either second or sub-second precision. \
                      The 'T' may be replaced with a space, fractional seconds may be delmited with \
@@ -68,7 +73,7 @@ pub(crate) struct Cli {
     #[arg(
         short = 'S',
         long,
-        value_name = "pattern",
+        value_name = "PATTERN",
         long_help = "Ignore records until this pattern is found in a file. The record containing \
                      the pattern will be searched, and if it matches, printed."
     )]
@@ -78,7 +83,7 @@ pub(crate) struct Cli {
     #[arg(
         short = 'E',
         long,
-        value_name = "pattern",
+        value_name = "PATTERN",
         long_help = "Ignore remaining records once this pattern is found in a file. The record \
                      containing the pattern will not be searched."
     )]
@@ -92,7 +97,7 @@ pub(crate) struct Cli {
     #[arg(short = 'h', long)]
     pub no_filename: bool, // todo
 
-    /// Print a brief help message.
+    /// Print comprehensive help.
     #[arg(long)]
     pub help: bool,
 }
@@ -163,41 +168,40 @@ impl Cli {
     pub fn is_record_start(&self, hay: &str) -> bool {
         self.log_pattern.is_match(hay)
     }
+
+    pub(crate) fn empty() -> Cli {
+        Cli {
+            pattern: None,
+            files: vec![],
+            patterns: vec![],
+            ignore_case: false,
+            max_count: None,
+            invert_match: false,
+            label: DEFAULT_LABEL.to_owned(),
+            log_pattern: DEFAULT_LOG_PATTERN.parse().unwrap(),
+            start: None,
+            end: None,
+            filename: false,
+            no_filename: false,
+            help: false,
+        }
+    }
+
+    pub(crate) fn all_re() -> Cli {
+        Cli {
+            pattern: Some("P".parse().unwrap()),
+            patterns: vec!["Q".parse().unwrap(), "R".parse().unwrap()],
+            log_pattern: "T".parse().unwrap(),
+            start: Some("S".parse().unwrap()),
+            end: Some("E".parse().unwrap()),
+            ..Cli::empty()
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    impl Cli {
-        fn empty() -> Cli {
-            Cli {
-                pattern: None,
-                files: vec![],
-                patterns: vec![],
-                ignore_case: false,
-                max_count: None,
-                invert_match: false,
-                log_pattern: DEFAULT_LOG_PATTERN.parse().unwrap(),
-                start: None,
-                end: None,
-                filename: false,
-                no_filename: false,
-                help: false,
-            }
-        }
-
-        fn all_re() -> Cli {
-            Cli {
-                pattern: Some("P".parse().unwrap()),
-                patterns: vec!["Q".parse().unwrap(), "R".parse().unwrap()],
-                log_pattern: "T".parse().unwrap(),
-                start: Some("S".parse().unwrap()),
-                end: Some("E".parse().unwrap()),
-                ..Cli::empty()
-            }
-        }
-    }
 
     #[test]
     fn init_empty() {
