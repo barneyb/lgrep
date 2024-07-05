@@ -48,7 +48,7 @@ pub(crate) struct Cli {
         long_help = "Selected lines are those NOT matching any of the specified patterns. Does not \
                      impact log/start/end patterns, only the main matching pattern(s)."
     )]
-    pub invert_match: bool, // todo
+    pub invert_match: bool,
 
     /// Pattern identifying the start of a log record.
     #[arg(
@@ -140,7 +140,8 @@ impl Cli {
     }
 
     pub fn is_match(&self, hay: &str) -> bool {
-        opt_re_match(&self.pattern, hay) || self.patterns.iter().any(|re| re.is_match(hay))
+        self.invert_match
+            ^ (opt_re_match(&self.pattern, hay) || self.patterns.iter().any(|re| re.is_match(hay)))
     }
 
     pub fn has_start(&self) -> bool {
@@ -313,6 +314,18 @@ mod tests {
             ..Cli::empty()
         };
         assert_eq!(true, cli.is_match("bab"));
+        assert_eq!(false, cli.is_match("bkb"));
+    }
+
+    #[test]
+    fn match_implicit_pattern_invert() {
+        let cli = Cli {
+            pattern: Some("a".parse().unwrap()),
+            invert_match: true,
+            ..Cli::empty()
+        };
+        assert_eq!(false, cli.is_match("bab"));
+        assert_eq!(true, cli.is_match("bkb"));
     }
 
     #[test]
@@ -322,6 +335,7 @@ mod tests {
             ..Cli::empty()
         };
         assert_eq!(false, cli.is_match("bab"));
+        assert_eq!(false, cli.is_match("bkb"));
     }
 
     #[test]
@@ -457,14 +471,6 @@ mod tests {
             ..Cli::empty()
         };
         assert_eq!(true, cli.is_record_start("i am a GOAT or something?"));
-    }
-
-    #[test]
-    fn no_record_start_custom() {
-        let cli = Cli {
-            log_pattern: "GOAT".parse().unwrap(),
-            ..Cli::empty()
-        };
         assert_eq!(false, cli.is_record_start("definitely only a rabbit"));
     }
 }
