@@ -8,12 +8,12 @@ use regex::Regex;
     author,
     arg_required_else_help = true,
     disable_help_flag = true,
-    after_long_help = "Environment:\n
-\
+    after_long_help = "Environment:
+\n\
                        The LGREP_LOG_PATTERN environment variable may be used to default the \
                        '--log-pattern' option, if you consistently need a different start-of-record \
-                       pattern in your environment. Providing the option supersedes the variable.\n
-\
+                       pattern in your environment. Providing the option supersedes the variable.
+\n\
                        There is no support for a GREP_OPTIONS equivalent. Use a shell function."
 )]
 pub(crate) struct Cli {
@@ -63,11 +63,18 @@ pub(crate) struct Cli {
     #[arg(
         long,
         value_name = "PATTERN",
-        long_help = "Pattern identifying the start of a log record. By default, assumes log records \
-                     start with an ISO-8601 datetime with either second or sub-second precision. \
-                     The 'T' may be replaced with a space, fractional seconds may be delimited with \
-                     a '.' (period) or a ',' (comma), and a timezone is not required. To make lgrep \
-                     behave like a slower grep, pass '' (match everything) as the log pattern."
+        long_help = "Pattern identifying the first line of a log record. By default, assumes log \
+                     records start with an ISO-8601-ish datetime with sub-second precision. The 'T' \
+                     may be replaced with a space, and fractional seconds may be delimited with a \
+                     '.' (period) or a ',' (comma). Timezone is not required. To make lgrep behave \
+                     like grep, pass '' (match everything) as the log pattern.
+\n\
+                     Before the first log record starts, each line is treated as a separate record, \
+                     as if invoked as grep.
+\n\
+                     Be careful if you pipe a multi-file lgrep into another lgprep! By default, the \
+                     second lgrep will receive filename-prefixed lines, which your log pattern must \
+                     gracefully handle. The default pattern accounts for this."
     )]
     pub log_pattern: Option<Regex>,
 

@@ -350,3 +350,32 @@ four
     );
     assert_eq!(vec!["two\n", "three\n"], mac.records);
 }
+
+#[test]
+fn before_first_log_record() {
+    let handler = Handler {
+        pattern: RegexSet::new([r"ee"]).unwrap(),
+        log_pattern: Regex::new(r"LOG").unwrap(),
+        ..Handler::empty()
+    };
+    // before the first log record boundary, treat every line as its own record
+    let mac = MatchesAndCount::run(
+        &handler,
+        "one, thee father
+two, thee mother
+egads, bad dad!
+LOG: three
+four
+LOG: five
+six
+",
+    );
+    assert_eq!(
+        vec![
+            "one, thee father\n",
+            "two, thee mother\n",
+            "LOG: three\nfour\n"
+        ],
+        mac.records
+    );
+}

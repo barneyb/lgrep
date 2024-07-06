@@ -10,7 +10,7 @@ use crate::io::STD_IN_FILENAME;
 
 const ENV_LOG_PATTERN: &str = "LGREP_LOG_PATTERN";
 
-const DEFAULT_LOG_PATTERN: &str = r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}([.,]\d+)?";
+const DEFAULT_LOG_PATTERN: &str = r"(^|:)\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d";
 const DEFAULT_LABEL: &str = "(standard input)";
 
 const INSENSITIVE_PREFIX: &str = "(?i)";
@@ -56,14 +56,21 @@ impl Handler {
 
     fn process_file(&self, source: &mut Source, sink: &mut dyn Write) -> Result<usize> {
         let mut file_started = !self.has_start();
+        let mut before_first_record = true;
         let mut match_count = 0;
         // an entire log record
         let mut record = String::new();
         // a single line of input (w/ the newline, if present)
         let mut line = String::new();
         while let Ok(n) = source.reader.read_line(&mut line) {
-            // if n == 0, reached EOF, so process final record
-            if self.is_record_start(&line) || n == 0 {
+            // if n == 0, reached EOF
+            let is_eof = n == 0;
+            let start_of_record = self.is_record_start(&line);
+            if before_first_record && start_of_record {
+                before_first_record = false;
+            }
+            if before_first_record || start_of_record || is_eof {
+                // process the buffered record
                 if self.is_end(&record) {
                     break; // reached end
                 }
@@ -82,11 +89,13 @@ impl Handler {
                         break; // reached max count
                     }
                 }
-                if n == 0 {
+                if is_eof {
                     break; // reached EOF
                 }
+                // start a new record
                 record.clone_from(&line);
             } else {
+                // add to the record buffer
                 record.push_str(&line);
             }
             line.clear();
