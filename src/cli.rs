@@ -7,7 +7,14 @@ use regex::Regex;
     about,
     author,
     arg_required_else_help = true,
-    disable_help_flag = true
+    disable_help_flag = true,
+    after_long_help = "Environment:\n
+\
+                       The LGREP_LOG_PATTERN environment variable may be used to default the \
+                       '--log-pattern' option, if you consistently need a different start-of-record \
+                       pattern in your environment. Providing the option supersedes the variable.\n
+\
+                       There is no support for a GREP_OPTIONS equivalent. Use a shell function."
 )]
 pub(crate) struct Cli {
     /// Pattern to search
