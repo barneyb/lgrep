@@ -334,3 +334,22 @@ four
     );
     assert_eq!("spiffy.txt:three\nspiffy.txt-four\n", mac.to_string());
 }
+
+#[test]
+fn max_count() {
+    let handler = Handler {
+        pattern: RegexSet::new(&[r"t", r"u"]).unwrap(),
+        log_pattern: Regex::new(r"").unwrap(),
+        max_count: Some(2),
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run(
+        &handler,
+        "one
+two
+three
+four
+",
+    );
+    assert_eq!(vec!["two\n", "three\n"], mac.records);
+}

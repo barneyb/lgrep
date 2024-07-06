@@ -1,5 +1,4 @@
 use std::io::{BufRead, Write};
-use std::path::Path;
 
 use anyhow::{Context, Result};
 use regex::{Regex, RegexSet};
@@ -42,15 +41,8 @@ impl Handler {
         let mut sink = std::io::stdout().lock();
         let mut match_count = 0;
         for f in self.files.iter() {
-            let filename = if f == STD_IN_FILENAME {
-                &self.label
-            } else if let Some(name) = Path::new(f).file_name() {
-                name.to_str().unwrap()
-            } else {
-                "(unknown)"
-            };
             let mut source = Source {
-                filename,
+                filename: if f == STD_IN_FILENAME { &self.label } else { f },
                 reader: io::get_reader(f)?,
             };
             self.process_file(&mut source, &mut sink, &mut match_count)?;
