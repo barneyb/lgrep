@@ -1,3 +1,4 @@
+use std::env;
 use std::io::{BufRead, Write};
 
 use anyhow::{Context, Result};
@@ -7,8 +8,11 @@ use crate::cli::Cli;
 use crate::io;
 use crate::io::STD_IN_FILENAME;
 
+const ENV_LOG_PATTERN: &str = "LGREP_LOG_PATTERN";
+
 const DEFAULT_LOG_PATTERN: &str = r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}([.,]\d+)?";
 const DEFAULT_LABEL: &str = "(standard input)";
+
 const INSENSITIVE_PREFIX: &str = "(?i)";
 
 pub(crate) struct Handler {
@@ -124,6 +128,15 @@ impl Handler {
     }
 }
 
+fn default_log_pattern() -> Regex {
+    if let Ok(p) = env::var(ENV_LOG_PATTERN) {
+        p.parse()
+    } else {
+        DEFAULT_LOG_PATTERN.parse()
+    }
+    .unwrap()
+}
+
 fn with_filename(sink: &mut dyn Write, record: &String, filename: &str) -> std::io::Result<()> {
     let fn_bytes = filename.as_bytes();
     let lines = record.as_bytes().split_inclusive(|b| *b == b'\n');
@@ -156,9 +169,7 @@ impl From<Cli> for Handler {
             patterns.push(p);
         }
         let mut pattern_strings = patterns.iter().map(|p| p.to_string()).collect::<Vec<_>>();
-        let mut log_pattern = cli
-            .log_pattern
-            .unwrap_or_else(|| DEFAULT_LOG_PATTERN.parse().unwrap());
+        let mut log_pattern = cli.log_pattern.unwrap_or_else(default_log_pattern);
         let mut start = cli.start;
         let mut end = cli.end;
         if cli.ignore_case {

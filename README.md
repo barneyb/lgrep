@@ -43,7 +43,7 @@ org.springframework.transaction.CannotCreateTransactionException: Could not open
 ```
 
 This time we got part of the stack trace, but also the unrelated message at the end (and a `--`). What we want is
-exactly the matching log records, and each one in its entirety. That's `lgrep`:
+exactly the matching log records, each one in its entirety, and nothing else. That's `lgrep`:
 
 ```
 % lgrep -i error app.log
@@ -59,8 +59,17 @@ org.springframework.transaction.CannotCreateTransactionException: Could not open
 ```
 
 The trick is that log records are clearly identifiable by "starts with a timestamp". `lgrep` uses this to build up a
-full log record and then check if it matches the pattern. If it does, print it out, just like `grep`.
+full log record and then check if it matches the pattern. If it does, print out the whole record.
 
-If your log files are structured differently, use `--log-pattern` to override the default "start of record" pattern.
+## Options
+
+`lgrep` supports a number of options that `grep` supports, such as `-v` and `-i`. It also supports a few new ones, such
+as `--start` to skip lines in a file until some pattern matches. Use `-h` for a summary, or `--help` for gory detail.
+
+## Log Format
+
+If your log records don't start with a timestamp, use `--log-pattern` to override the default "start of record" pattern.
 Each line of the input which matches the pattern starts a new record. If you want `lgrep` to behave like `grep`, pass
-`--log-pattern=` to match every line, and therefore equate records with lines.
+`--log-pattern=` to match every line, and therefore equate records with lines. If your application consistently formats
+its logs (🤞), the `LGREP_LOG_PATTERN` environment variable can be used instead of supplying `--log-pattern` all over
+the place. The option still takes precedence, for ad hoc use.

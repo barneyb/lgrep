@@ -18,7 +18,7 @@ impl Handler {
     fn empty() -> Handler {
         Handler {
             files: Vec::new(),
-            pattern: RegexSet::new(&[r"a"]).unwrap(),
+            pattern: RegexSet::new([r"a"]).unwrap(),
             max_count: None,
             invert_match: false,
             label: DEFAULT_LABEL.to_owned(),
@@ -31,7 +31,7 @@ impl Handler {
 
     fn all_re() -> Handler {
         Handler {
-            pattern: RegexSet::new(&[r"P", r"Q", r"R"]).unwrap(),
+            pattern: RegexSet::new([r"P", r"Q", r"R"]).unwrap(),
             log_pattern: r"T".parse().unwrap(),
             start: Some(r"S".parse().unwrap()),
             end: Some(r"E".parse().unwrap()),
@@ -136,7 +136,7 @@ struct MatchesAndCount {
 impl Display for MatchesAndCount {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for r in self.records.iter() {
-            f.write_str(&r)?;
+            f.write_str(r)?;
         }
         Ok(())
     }
@@ -186,7 +186,7 @@ impl MatchesAndCount {
 #[test]
 fn app_log_for_error() {
     let handler = Handler {
-        pattern: RegexSet::new(&[r"(?i)error"]).unwrap(),
+        pattern: RegexSet::new([r"(?i)error"]).unwrap(),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
@@ -202,7 +202,7 @@ fn app_log_for_error() {
 #[test]
 fn app_log_for_transaction() {
     let handler = Handler {
-        pattern: RegexSet::new(&[r"startTransaction"]).unwrap(),
+        pattern: RegexSet::new([r"startTransaction"]).unwrap(),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
@@ -212,7 +212,7 @@ fn app_log_for_transaction() {
 #[test]
 fn simple_process_file() {
     let handler = Handler {
-        pattern: RegexSet::new(&[r"t"]).unwrap(),
+        pattern: RegexSet::new([r"t"]).unwrap(),
         log_pattern: Regex::new(r".").unwrap(),
         ..Handler::empty()
     };
@@ -230,7 +230,7 @@ line 4
 #[test]
 fn app_log_start() {
     let handler = Handler {
-        pattern: RegexSet::new(&[r"(?i)error"]).unwrap(),
+        pattern: RegexSet::new([r"(?i)error"]).unwrap(),
         start: Some(r"QueueProcessor".parse().unwrap()), // middle of the trace
         ..Handler::empty()
     };
@@ -247,7 +247,7 @@ fn app_log_start() {
 #[test]
 fn app_log_end() {
     let handler = Handler {
-        pattern: RegexSet::new(&[r"(?i)queue"]).unwrap(),
+        pattern: RegexSet::new([r"(?i)queue"]).unwrap(),
         end: Some(r"QueueProcessor".parse().unwrap()),
         ..Handler::empty()
     };
@@ -261,7 +261,7 @@ fn app_log_end() {
 #[test]
 fn app_log_final_line() {
     let handler = Handler {
-        pattern: RegexSet::new(&[r"unrelated"]).unwrap(),
+        pattern: RegexSet::new([r"unrelated"]).unwrap(),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
@@ -274,7 +274,7 @@ fn app_log_final_line() {
 #[test]
 fn filenames_singleline_records() {
     let handler = Handler {
-        pattern: RegexSet::new(&[r"o"]).unwrap(),
+        pattern: RegexSet::new([r"o"]).unwrap(),
         log_pattern: Regex::new(r".").unwrap(),
         filename: true,
         ..Handler::empty()
@@ -296,7 +296,7 @@ four",
 #[test]
 fn filenames_multiline_records() {
     let handler = Handler {
-        pattern: RegexSet::new(&[r"r"]).unwrap(),
+        pattern: RegexSet::new([r"r"]).unwrap(),
         log_pattern: Regex::new(r"e").unwrap(),
         filename: true,
         ..Handler::empty()
@@ -315,7 +315,7 @@ four",
 #[test]
 fn filenames_final_newline() {
     let handler = Handler {
-        pattern: RegexSet::new(&[r"r"]).unwrap(),
+        pattern: RegexSet::new([r"r"]).unwrap(),
         log_pattern: Regex::new(r"e").unwrap(),
         filename: true,
         ..Handler::empty()
@@ -335,7 +335,7 @@ four
 #[test]
 fn max_count() {
     let handler = Handler {
-        pattern: RegexSet::new(&[r"t", r"u"]).unwrap(),
+        pattern: RegexSet::new([r"t", r"u"]).unwrap(),
         log_pattern: Regex::new(r"").unwrap(),
         max_count: Some(2),
         ..Handler::empty()
