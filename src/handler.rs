@@ -125,6 +125,7 @@ impl Handler {
         opt_re_match(&self.start, hay)
     }
 
+    #[allow(dead_code)]
     pub(crate) fn has_end(&self) -> bool {
         self.end.is_some()
     }
