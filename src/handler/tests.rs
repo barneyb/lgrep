@@ -175,7 +175,7 @@ impl MatchesAndCount {
         let mut mac = MatchesAndCount::default();
         let count = handler.process_file(&mut source, &mut mac).unwrap();
         if !handler.filename {
-            // w/ filenames, we'll get three writes per line, not one per record
+            // w/ filenames, there are three writes per line, not one per record
             assert_eq!(count, mac.records.len());
         }
         mac.count = count;

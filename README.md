@@ -19,7 +19,7 @@ org.springframework.transaction.CannotCreateTransactionException: Could not open
 2024-07-01 01:25:48.000 some other unrelated log message
 ```
 
-If we're `grep`ing for errors, we might try this:
+If you're `grep`ing for errors, you might try this:
 
 ```
 % grep -i error app.log
@@ -42,8 +42,8 @@ org.springframework.transaction.CannotCreateTransactionException: Could not open
 2024-07-01 01:25:48.000 some other unrelated log message
 ```
 
-This time we got part of the stack trace, but also the unrelated message at the end (and a `--`). What we want is
-exactly the matching log records, each one in its entirety, and nothing else. That's `lgrep`:
+Part of the stack trace is there, but also the unrelated message at the end (and a `--`). What you want is exactly the
+matching log records, each one in its entirety, and nothing else. That's `lgrep`:
 
 ```
 % lgrep -i error app.log
