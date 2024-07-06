@@ -58,6 +58,9 @@ org.springframework.transaction.CannotCreateTransactionException: Could not open
 2024-07-01 01:25:47.790 queue draining complete (ERROR)
 ```
 
-The trick is that log records are clearly identifiable by "starts with a timestamp". `lgrep` uses this to build up full
-log records and then check if it matches the pattern. If it does, print it out, just like `grep`. If your log files are
-structured differently, use `--log-pattern` to override the default "start of record" pattern.
+The trick is that log records are clearly identifiable by "starts with a timestamp". `lgrep` uses this to build up a
+full log record and then check if it matches the pattern. If it does, print it out, just like `grep`.
+
+If your log files are structured differently, use `--log-pattern` to override the default "start of record" pattern.
+Each line of the input which matches the pattern starts a new record. If you want `lgrep` to behave like `grep`, pass
+`--log-pattern=` to match every line, and therefore equate records with lines.
