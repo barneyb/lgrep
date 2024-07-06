@@ -114,7 +114,7 @@ mod tests {
     use super::*;
 
     impl Cli {
-        pub(crate) fn empty() -> Cli {
+        fn empty() -> Cli {
             Cli {
                 pattern: None,
                 files: vec![],

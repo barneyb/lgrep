@@ -102,28 +102,28 @@ impl Handler {
         }
     }
 
-    pub(crate) fn is_match(&self, hay: &str) -> bool {
+    fn is_match(&self, hay: &str) -> bool {
         self.invert_match ^ self.pattern.is_match(hay)
     }
 
-    pub(crate) fn has_start(&self) -> bool {
+    fn has_start(&self) -> bool {
         self.start.is_some()
     }
 
-    pub(crate) fn is_start(&self, hay: &str) -> bool {
+    fn is_start(&self, hay: &str) -> bool {
         opt_re_match(&self.start, hay)
     }
 
     #[allow(dead_code)]
-    pub(crate) fn has_end(&self) -> bool {
+    fn has_end(&self) -> bool {
         self.end.is_some()
     }
 
-    pub(crate) fn is_end(&self, hay: &str) -> bool {
+    fn is_end(&self, hay: &str) -> bool {
         opt_re_match(&self.end, hay)
     }
 
-    pub(crate) fn is_record_start(&self, hay: &str) -> bool {
+    fn is_record_start(&self, hay: &str) -> bool {
         self.log_pattern.is_match(hay)
     }
 }
