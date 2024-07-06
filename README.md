@@ -2,10 +2,10 @@
 
 `lgrep` is a `grep`-like utility which better understands log files. Log records in log files often correspond to lines
 of text, but not always. Since `grep` only understands lines of text, this can require some gymnastics to extract full
-log records. To make it concrete, this snippet of log file contains 11 lines of text, but only four log records (of
-one, eight, one, and one lines).
+log records. Concretely, this 11-line log file contains four log records (of one, eight, one, and one lines):
 
 ```
+% cat app.log
 2024-07-01 01:25:46.123 draining queue
 2024-07-01 01:25:47.755 Unexpected error occurred in scheduled task
 org.springframework.transaction.CannotCreateTransactionException: Could not open JPA EntityManager for transaction
@@ -59,12 +59,25 @@ org.springframework.transaction.CannotCreateTransactionException: Could not open
 ```
 
 The trick is that log records are clearly identifiable by "starts with a timestamp". `lgrep` uses this to build up a
-full log record and then check if it matches the pattern. If it does, print out the whole record.
+full log record and then check if it matches the pattern. If it matches, the whole record is printed out. This also
+means you can apply multi-line patterns! For example, a stacktrace where cookbook delegated to Spring:
+
+```
+% lgrep 'springframework.*\n.*cookbook' app.log
+2024-07-01 01:25:47.755 Unexpected error occurred in scheduled task
+org.springframework.transaction.CannotCreateTransactionException: Could not open JPA EntityManager for transaction
+    at org.springframework.orm.jpa.JpaTransactionManager.doBegin(JpaTransactionManager.java:466)
+    at org.springframework.transaction.support.AbstractPlatformTransactionManager.startTransaction(AbstractPlatformTransactionManager.java:531)
+    at org.springframework.transaction.support.AbstractPlatformTransactionManager.getTransaction(AbstractPlatformTransactionManager.java:405)
+    at org.springframework.transaction.support.TransactionTemplate.execute(TransactionTemplate.java:137)
+    at com.brennaswitzer.cookbook.async.QueueProcessor.drainQueueInternal(QueueProcessor.java:68)
+    ... many more frames ...
+```
 
 ## Options
 
 `lgrep` supports a number of options that `grep` supports, such as `-v` and `-i`. It also supports a few new ones, such
-as `--start` to skip lines in a file until some pattern matches. Use `-h` for a summary, or `--help` for gory detail.
+as `--start`, to skip lines in a file until some pattern matches. Use `-h` for a summary, or `--help` for gory detail.
 
 ## Log Format
 
