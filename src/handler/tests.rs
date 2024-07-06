@@ -157,8 +157,8 @@ impl Write for MatchesAndCount {
     }
 }
 
+// 'static here is a kludge, but it's just for tests, so meh
 impl MatchesAndCount {
-    // 'static here is a kludge, but it's just for tests, so meh
     fn run(handler: &Handler, source: &'static str) -> MatchesAndCount {
         Self::run_with_filename(handler, "input.txt", source)
     }
@@ -172,11 +172,8 @@ impl MatchesAndCount {
             filename,
             reader: Box::new(Cursor::new(source.as_bytes())),
         };
-        let mut count = 0;
         let mut mac = MatchesAndCount::default();
-        handler
-            .process_file(&mut source, &mut mac, &mut count)
-            .unwrap();
+        let count = handler.process_file(&mut source, &mut mac).unwrap();
         if !handler.filename {
             // w/ filenames, we'll get three writes per line, not one per record
             assert_eq!(count, mac.records.len());

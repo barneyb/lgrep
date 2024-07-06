@@ -35,7 +35,7 @@ pub(crate) struct Cli {
     )]
     pub ignore_case: bool,
 
-    /// Stop reading the file after num matches
+    /// Stop reading the file after num matches.
     #[arg(short, long, value_name = "NUM")]
     pub max_count: Option<usize>,
 

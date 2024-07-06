@@ -45,21 +45,14 @@ impl Handler {
                 filename: if f == STD_IN_FILENAME { &self.label } else { f },
                 reader: io::get_reader(f)?,
             };
-            self.process_file(&mut source, &mut sink, &mut match_count)?;
-            if self.is_max_reached(match_count) {
-                break;
-            }
+            match_count += self.process_file(&mut source, &mut sink)?;
         }
         Ok(match_count)
     }
 
-    fn process_file(
-        &self,
-        source: &mut Source,
-        sink: &mut dyn Write,
-        match_count: &mut usize,
-    ) -> Result<()> {
+    fn process_file(&self, source: &mut Source, sink: &mut dyn Write) -> Result<usize> {
         let mut file_started = !self.has_start();
+        let mut match_count = 0;
         // an entire log record
         let mut record = String::new();
         // a single line of input (w/ the newline, if present)
@@ -80,8 +73,8 @@ impl Handler {
                         sink.write_all(record.as_bytes())
                     }
                     .with_context(|| "Failed to write record")?;
-                    *match_count += 1;
-                    if self.is_max_reached(*match_count) {
+                    match_count += 1;
+                    if self.is_max_reached(match_count) {
                         break; // reached max count
                     }
                 }
@@ -94,7 +87,7 @@ impl Handler {
             }
             line.clear();
         }
-        Ok(())
+        Ok(match_count)
     }
 
     fn is_max_reached(&self, match_count: usize) -> bool {
