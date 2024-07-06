@@ -4,7 +4,7 @@ use std::io::BufReader;
 
 use anyhow::Context;
 
-use crate::cli::STD_IN_FILENAME;
+pub(crate) const STD_IN_FILENAME: &str = "-";
 
 pub fn get_reader(filename: &String) -> anyhow::Result<Box<dyn BufRead>> {
     if filename == STD_IN_FILENAME {

@@ -1,8 +1,12 @@
 use std::process;
 
 fn main() {
-    if let Err(e) = lgrep::run() {
-        eprintln!("Application error: {e}");
-        process::exit(1);
+    match lgrep::run() {
+        Err(e) => {
+            eprintln!("Application error: {e}");
+            process::exit(2);
+        }
+        Ok(-1) => process::exit(2),
+        Ok(matches) => process::exit(if matches == 0 { 1 } else { 0 }),
     }
 }
