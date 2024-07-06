@@ -58,8 +58,9 @@ pub(crate) struct Cli {
         value_name = "PATTERN",
         long_help = "Pattern identifying the start of a log record. By default, assumes log records \
                      start with an ISO-8601 datetime with either second or sub-second precision. \
-                     The 'T' may be replaced with a space, fractional seconds may be delmited with \
-                     a '.' (period) or a ',' (comma), and a timezone is not required."
+                     The 'T' may be replaced with a space, fractional seconds may be delimited with \
+                     a '.' (period) or a ',' (comma), and a timezone is not required. To make lgrep \
+                     behave like a slower grep, pass '' (match everything) as the log pattern."
     )]
     pub log_pattern: Option<Regex>,
 
@@ -84,7 +85,13 @@ pub(crate) struct Cli {
     pub end: Option<Regex>,
 
     /// Always print filename headers with output lines.
-    #[arg(short = 'H', long)]
+    #[arg(
+        short = 'H',
+        long,
+        long_help = "Always print filename headers with output lines. The first line of a record \
+                     will follow the filename with a ':' (colon) and subsequent lines with a '-' \
+                     (hyphen). This is reminiscent of grep's contextual line formatting (via '-C')."
+    )]
     pub filename: bool,
 
     /// Never print filename headers with output lines. Trumps '-H' if both are specified.
