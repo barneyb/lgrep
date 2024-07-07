@@ -2,7 +2,7 @@
 
 `lgrep` is a `grep`-like utility which better understands log files. Log records in log files often correspond to lines
 of text, but not always. Since `grep` only understands lines of text, this can require some gymnastics to extract full
-log records. Concretely, this 11-line log file contains four log records (of one, eight, one, and one lines):
+log records. Concretely, `app.log` is an 11-line file containing four log records (of one, eight, one, and one lines):
 
 ```
 % cat app.log
@@ -86,3 +86,31 @@ Each line of the input which matches the pattern starts a new record. If you wan
 `--log-pattern=` to match every line, and therefore equate records with lines. If your application consistently formats
 its logs (🤞), the `LGREP_LOG_PATTERN` environment variable can be used instead of supplying `--log-pattern` all over
 the place. The option still takes precedence, for ad hoc use.
+
+## Compressed Logs
+
+`lgrep` transparently supports compressed inputs using compression utilities available on your `$PATH`. This means there
+is process overhead, as well as decompression overhead. To demonstrate, compress `app.log` a couple ways:
+
+```
+% gzip -k app.log
+% bzip2 -k app.log
+% ls -o app.log*
+-rw-r--r--  1 barneyb  950 Jul  6 19:29 app.log
+-rw-r--r--  1 barneyb  479 Jul  6 19:29 app.log.bz2
+-rw-r--r--  1 barneyb  417 Jul  6 19:29 app.log.gz
+```
+
+Whether named on the command line or streamed, `lgrep` will treat them equivalently:
+
+```
+% lgrep draining app.log
+2024-07-01 01:25:46.123 draining queue
+2024-07-01 01:25:47.790 queue draining complete (ERROR)
+% lgrep draining app.log.gz
+2024-07-01 01:25:46.123 draining queue
+2024-07-01 01:25:47.790 queue draining complete (ERROR)
+% lgrep draining < app.log.bz2
+2024-07-01 01:25:46.123 draining queue
+2024-07-01 01:25:47.790 queue draining complete (ERROR)
+```

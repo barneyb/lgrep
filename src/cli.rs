@@ -8,6 +8,9 @@ use regex::Regex;
     author,
     arg_required_else_help = true,
     disable_help_flag = true,
+    long_about = "A grep-like tool for log files with multi-line records. Files (and STDIN) will be \
+                  automatically decompressed, assuming appropriate utilities are available on your \
+                  $PATH.",
     after_long_help = "Environment:
 \n\
                        The LGREP_LOG_PATTERN environment variable may be used to default the \

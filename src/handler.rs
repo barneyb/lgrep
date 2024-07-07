@@ -62,8 +62,9 @@ impl Handler {
         let mut record = String::new();
         // a single line of input (w/ the newline, if present)
         let mut line = String::new();
-        while let Ok(n) = source.reader.read_line(&mut line) {
-            // if n == 0, reached EOF
+        loop {
+            // while let soaks up an Err; we want to propagate it
+            let n = source.reader.read_line(&mut line)?;
             let is_eof = n == 0;
             let start_of_record = self.is_record_start(&line);
             if before_first_record && start_of_record {
@@ -92,10 +93,10 @@ impl Handler {
                 if is_eof {
                     break; // reached EOF
                 }
-                // start a new record
+                // start a new record with line
                 record.clone_from(&line);
             } else {
-                // add to the record buffer
+                // add line to the current record
                 record.push_str(&line);
             }
             line.clear();
@@ -212,4 +213,4 @@ impl From<Cli> for Handler {
 }
 
 #[cfg(test)]
-mod tests;
+mod handler_tests;
