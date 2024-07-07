@@ -132,54 +132,67 @@ Whether named on the command line or streamed, `lgrep` will treat them equivalen
 
 ## Performance
 
-At my day job, I needed to get the stack trace out of our application logs, corresponding to an error id
-(`b2f444a1-918b-4dd7-994f-990097dd4faa`). It was known to have occurred on one of six JVMs, and in a given hour (our
+At my day job, I had an error id (`b2f444a1-918b-4dd7-994f-990097dd4faa`), and needed to get the corresponding stack
+trace out of our application logs. It was known to have occurred on one of six JVMs, and in a given hour (our
 frequency of log rotation). This was my starting point, on an 2019 Intel MBP running macOS Sonoma 14.5:
 
 ```
 % ls -oh jvm*.gz
--rw-r--r--  1 barneyb    37M Jul  6 19:29 jvm-1.log.2024-07-07-15.gz
--rw-r--r--  1 barneyb    34M Jul  6 19:29 jvm-2.log.2024-07-07-15.gz
--rw-r--r--  1 barneyb    54M Jul  6 19:29 jvm-3.log.2024-07-07-15.gz
--rw-r--r--  1 barneyb    56M Jul  6 19:29 jvm-4.log.2024-07-07-15.gz
--rw-r--r--  1 barneyb    46M Jul  6 19:29 jvm-5.log.2024-07-07-15.gz
--rw-r--r--  1 barneyb    50M Jul  6 19:29 jvm-6.log.2024-07-07-15.gz
+-rw-r--r--  1 barneyb    37M Jul  6 19:29 jvm-1.log.2024-07-06-15.gz
+-rw-r--r--  1 barneyb    34M Jul  6 19:29 jvm-2.log.2024-07-06-15.gz
+-rw-r--r--  1 barneyb    54M Jul  6 19:29 jvm-3.log.2024-07-06-15.gz
+-rw-r--r--  1 barneyb    56M Jul  6 19:29 jvm-4.log.2024-07-06-15.gz
+-rw-r--r--  1 barneyb    46M Jul  6 19:29 jvm-5.log.2024-07-06-15.gz
+-rw-r--r--  1 barneyb    50M Jul  6 19:29 jvm-6.log.2024-07-06-15.gz
 ```
 
-Lets find that error!
+Let's find that error!
 
 ```
 % time lgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-*.gz
-... single log record including stack trace omitted ...
+jvm-1.log.2024-07-06-15.gz:... log header omitted ...
+jvm-1.log.2024-07-06-15.gz-... stack ...
+jvm-1.log.2024-07-06-15.gz-... trace ...
+jvm-1.log.2024-07-06-15.gz-... omitted ...
 lgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-*.gz  7.05s user 1.83s system 171% cpu 5.185 total
 ```
 
-Turns out it was from `jvm-1`. What about `zgrep`ing for just that one file?
+Turns out it was from `jvm-1`, and got the stack trace, so I'm done. But what about `zgrep`-ing just that one file?
 
 ```
-% time zgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-07-15.gz
-... single line omitted ...
+% time zgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-06-15.gz
+... log line omitted ...
 zgrep b2f444a1-918b-4dd7-994f-990097dd4faa   10.44s user 0.02s system 99% cpu 10.477 total
 ```
 
-Slower that `lgrep` processed _all_ the files. How does `lgrep` do for just one?
+About 50% slower than `lgrep` processed _all_ the files?! How does `lgrep` do for just one file?
 
 ```
-% time lgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-07-15.gz
-... single log record including stack trace omitted ...
+% time lgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-06-15.gz
+... log header omitted ...
+... stack ...
+... trace ...
+... omitted ...
 lgrep b2f444a1-918b-4dd7-994f-990097dd4faa   0.90s user 0.21s system 169% cpu 0.652 total
 ```
 
-So `zgrep` is slow. How about if the log is decompressed ahead of time:
+So `zgrep` is slow. What if the log is decompressed ahead of time:
 
 ```
-% gunzip jvm-1.log.2024-07-07-15.gz
-% time grep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-07-15
-... single line omitted ...
+% time gunzip jvm-1.log.2024-07-06-15.gz
+gunzip jvm-1.log.2024-07-06-15.gz  0.39s user 0.24s system 98% cpu 0.641 total
+% time grep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-06-15
+... log line omitted ...
 grep b2f444a1-918b-4dd7-994f-990097dd4faa   9.99s user 0.08s system 99% cpu 10.071 total
-% time lgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-07-15
-... single log record including stack trace omitted ...
+% time lgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-06-15
+... log header omitted ...
+... stack ...
+... trace ...
+... omitted ...
 lgrep b2f444a1-918b-4dd7-994f-990097dd4faa   0.49s user 0.12s system 98% cpu 0.616 total
 ```
 
-Looks like it's actually `grep` that is slow.
+Looks like it's actually `grep` that is slow. The decompression overhead is about half a second for both `lgrep`
+and `zgrep`, which `gunzip`'s runtime approximates.
+
+This is obviously not a formal benchmark, just a quick comparison. But still pretty suggestive.
