@@ -7,6 +7,6 @@ fn main() {
             process::exit(2);
         }
         Ok(-1) => process::exit(2),
-        Ok(matches) => process::exit(if matches == 0 { 1 } else { 0 }),
+        Ok(matches) => process::exit(if matches > 0 { 0 } else { 1 }),
     }
 }
