@@ -2,7 +2,22 @@
 
 `lgrep` is a `grep`-like utility which better understands log files. Log records in log files often correspond to lines
 of text, but not always. Since `grep` only understands lines of text, this can require some gymnastics to extract full
-log records. Concretely, `app.log` is an 11-line file containing four log records (of one, eight, one, and one lines):
+log records.
+
+## Build & Install
+
+Use `cargo` to build. Get it via http://rustup.rs if you don't have it already.
+
+```
+git clone https://github.com/barneyb/lgrep.git
+cd lgrep
+cargo install --path .
+lgrep -h
+```
+
+## Motivation
+
+Consider `app.log`, an 11-line file containing four log records (of one, eight, one, and one lines):
 
 ```
 % cat app.log
@@ -114,3 +129,57 @@ Whether named on the command line or streamed, `lgrep` will treat them equivalen
 2024-07-01 01:25:46.123 draining queue
 2024-07-01 01:25:47.790 queue draining complete (ERROR)
 ```
+
+## Performance
+
+At my day job, I needed to get the stack trace out of our application logs, corresponding to an error id
+(`b2f444a1-918b-4dd7-994f-990097dd4faa`). It was known to have occurred on one of six JVMs, and in a given hour (our
+frequency of log rotation). This was my starting point, on an 2019 Intel MBP running macOS Sonoma 14.5:
+
+```
+% ls -oh jvm*.gz
+-rw-r--r--  1 barneyb    37M Jul  6 19:29 jvm-1.log.2024-07-07-15.gz
+-rw-r--r--  1 barneyb    34M Jul  6 19:29 jvm-2.log.2024-07-07-15.gz
+-rw-r--r--  1 barneyb    54M Jul  6 19:29 jvm-3.log.2024-07-07-15.gz
+-rw-r--r--  1 barneyb    56M Jul  6 19:29 jvm-4.log.2024-07-07-15.gz
+-rw-r--r--  1 barneyb    46M Jul  6 19:29 jvm-5.log.2024-07-07-15.gz
+-rw-r--r--  1 barneyb    50M Jul  6 19:29 jvm-6.log.2024-07-07-15.gz
+```
+
+Lets find that error!
+
+```
+% time lgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-*.gz
+... single log record including stack trace omitted ...
+lgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-*.gz  7.05s user 1.83s system 171% cpu 5.185 total
+```
+
+Turns out it was from `jvm-1`. What about `zgrep`ing for just that one file?
+
+```
+% time zgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-07-15.gz
+... single line omitted ...
+zgrep b2f444a1-918b-4dd7-994f-990097dd4faa   10.44s user 0.02s system 99% cpu 10.477 total
+```
+
+Slower that `lgrep` processed _all_ the files. How does `lgrep` do for just one?
+
+```
+% time lgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-07-15.gz
+... single log record including stack trace omitted ...
+lgrep b2f444a1-918b-4dd7-994f-990097dd4faa   0.90s user 0.21s system 169% cpu 0.652 total
+```
+
+So `zgrep` is slow. How about if the log is decompressed ahead of time:
+
+```
+% gunzip jvm-1.log.2024-07-07-15.gz
+% time grep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-07-15
+... single line omitted ...
+grep b2f444a1-918b-4dd7-994f-990097dd4faa   9.99s user 0.08s system 99% cpu 10.071 total
+% time lgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-07-15
+... single log record including stack trace omitted ...
+lgrep b2f444a1-918b-4dd7-994f-990097dd4faa   0.49s user 0.12s system 98% cpu 0.616 total
+```
+
+Looks like it's actually `grep` that is slow.
