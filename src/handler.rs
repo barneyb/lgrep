@@ -1,5 +1,5 @@
 use std::env;
-use std::io::{BufRead, Write};
+use std::io::{BufRead, ErrorKind, Write};
 
 use anyhow::{Context, Result};
 use regex::{Regex, RegexSet};
@@ -7,6 +7,7 @@ use regex::{Regex, RegexSet};
 use crate::cli::Cli;
 use crate::io;
 use crate::io::STD_IN_FILENAME;
+use crate::Exit::*;
 
 const ENV_LOG_PATTERN: &str = "LGREP_LOG_PATTERN";
 
@@ -41,20 +42,27 @@ struct Source<'a> {
 }
 
 impl Handler {
-    pub(crate) fn run(&self) -> Result<usize> {
+    pub(crate) fn run(&self) -> Result<crate::Exit> {
         let mut sink = std::io::stdout().lock();
-        let mut match_count = 0;
+        let mut exit = NoMatch;
         for f in self.files.iter() {
             let mut source = Source {
                 filename: if f == STD_IN_FILENAME { &self.label } else { f },
                 reader: io::get_reader(f)?,
             };
-            match_count += self.process_file(&mut source, &mut sink)?;
+            match self.process_file(&mut source, &mut sink)? {
+                Terminate => {
+                    exit = Terminate;
+                    break;
+                }
+                Match => exit = Match,
+                _ => {}
+            }
         }
-        Ok(match_count)
+        Ok(exit)
     }
 
-    fn process_file(&self, source: &mut Source, sink: &mut dyn Write) -> Result<usize> {
+    fn process_file(&self, source: &mut Source, sink: &mut dyn Write) -> Result<crate::Exit> {
         let mut file_started = !self.has_start();
         let mut before_first_record = true;
         let mut match_count = 0;
@@ -79,12 +87,20 @@ impl Handler {
                     file_started = true;
                 }
                 if file_started && self.is_match(&record) {
-                    if self.filename {
+                    let r = if self.filename {
                         with_filename(sink, &record, source.filename)
                     } else {
                         sink.write_all(record.as_bytes())
+                    };
+                    if let Err(e) = r {
+                        return if e.kind() == ErrorKind::BrokenPipe {
+                            // nothing is listening anymore
+                            Ok(Terminate)
+                        } else {
+                            let msg = format!("Failed to write record: {e}");
+                            Err(e).with_context(|| msg)
+                        };
                     }
-                    .with_context(|| "Failed to write record")?;
                     match_count += 1;
                     if self.is_max_reached(match_count) {
                         break; // reached max count
@@ -101,7 +117,7 @@ impl Handler {
             }
             line.clear();
         }
-        Ok(match_count)
+        Ok(if match_count == 0 { NoMatch } else { Match })
     }
 
     fn is_max_reached(&self, match_count: usize) -> bool {
