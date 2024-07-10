@@ -1,12 +1,13 @@
-use std::process;
+use std::process::ExitCode;
 
-fn main() {
+use lgrep::Exit;
+
+fn main() -> ExitCode {
     match lgrep::run() {
         Err(e) => {
-            eprintln!("Application error: {e}");
-            process::exit(2);
+            eprintln!("lgrep: {e:#}");
+            Exit::Error.into()
         }
-        Ok(-1) => process::exit(2),
-        Ok(matches) => process::exit(if matches > 0 { 0 } else { 1 }),
+        Ok(e) => e.into(),
     }
 }
