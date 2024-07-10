@@ -1,13 +1,13 @@
 use std::env;
-use std::io::{BufRead, ErrorKind, Write};
+use std::io::{BufRead, BufWriter, ErrorKind, StdoutLock, Write};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
 use regex::{Regex, RegexSet};
 
+use io::STD_IN_FILENAME;
+
 use crate::cli::Cli;
-use crate::io;
-use crate::io::STD_IN_FILENAME;
-use crate::Exit::*;
+use crate::{io, Exit};
 
 const ENV_LOG_PATTERN: &str = "LGREP_LOG_PATTERN";
 
@@ -41,28 +41,29 @@ struct Source<'a> {
     reader: Box<dyn BufRead>,
 }
 
+type Sink<'a> = BufWriter<StdoutLock<'a>>;
+
 impl Handler {
-    pub(crate) fn run(&self) -> Result<crate::Exit> {
-        let mut sink = std::io::stdout().lock();
-        let mut exit = NoMatch;
+    pub(crate) fn run(&self) -> Result<Exit> {
+        let mut sink = BufWriter::new(std::io::stdout().lock());
+        let mut exit = Exit::NoMatch;
         for f in self.files.iter() {
             let mut source = Source {
                 filename: if f == STD_IN_FILENAME { &self.label } else { f },
                 reader: io::get_reader(f)?,
             };
             match self.process_file(&mut source, &mut sink)? {
-                Terminate => {
-                    exit = Terminate;
-                    break;
+                Exit::Terminate => {
+                    return Ok(Exit::Terminate);
                 }
-                Match => exit = Match,
+                Exit::Match => exit = Exit::Match,
                 _ => {}
             }
         }
         Ok(exit)
     }
 
-    fn process_file(&self, source: &mut Source, sink: &mut dyn Write) -> Result<crate::Exit> {
+    fn process_file(&self, source: &mut Source, sink: &mut Sink) -> Result<Exit> {
         let mut file_started = !self.has_start();
         let mut before_first_record = true;
         let mut match_count = 0;
@@ -87,18 +88,18 @@ impl Handler {
                     file_started = true;
                 }
                 if file_started && self.is_match(&record) {
-                    let r = if self.filename {
+                    let mut r = if self.filename {
                         with_filename(sink, &record, source.filename)
                     } else {
-                        sink.write_all(record.as_bytes())
-                    };
+                        without_filename(sink, &record)
+                    }
+                    .and_then(|_| sink.flush());
                     if let Err(e) = r {
                         return if e.kind() == ErrorKind::BrokenPipe {
                             // nothing is listening anymore
-                            Ok(Terminate)
+                            Ok(Exit::Terminate)
                         } else {
-                            let msg = format!("Failed to write record: {e}");
-                            Err(e).with_context(|| msg)
+                            Err(Error::from(e)).context("Failed to write")
                         };
                     }
                     match_count += 1;
@@ -117,7 +118,11 @@ impl Handler {
             }
             line.clear();
         }
-        Ok(if match_count == 0 { NoMatch } else { Match })
+        Ok(if match_count == 0 {
+            Exit::NoMatch
+        } else {
+            Exit::Match
+        })
     }
 
     fn is_max_reached(&self, match_count: usize) -> bool {
@@ -163,15 +168,22 @@ fn default_log_pattern() -> Regex {
     .unwrap()
 }
 
-fn with_filename(sink: &mut dyn Write, record: &String, filename: &str) -> std::io::Result<()> {
+fn without_filename(sink: &mut Sink, record: &String) -> std::io::Result<()> {
+    sink.write_all(record.as_bytes())
+}
+
+const DELIM_START: &[u8] = &[b':'];
+const DELIM_FOLLOW: &[u8] = &[b'-'];
+
+fn with_filename(sink: &mut Sink, record: &String, filename: &str) -> std::io::Result<()> {
     let fn_bytes = filename.as_bytes();
     let lines = record.as_bytes().split_inclusive(|b| *b == b'\n');
-    let mut started = false;
+    let mut delim = DELIM_START;
     for l in lines {
         sink.write_all(fn_bytes)?;
-        sink.write_all(&[if started { b'-' } else { b':' }])?;
+        sink.write_all(delim)?;
         sink.write_all(l)?;
-        started = true;
+        delim = DELIM_FOLLOW;
     }
     Ok(())
 }
