@@ -1,10 +1,10 @@
 use std::fmt::{Display, Formatter};
-use std::io::{Cursor, Error, ErrorKind};
+use std::io::Cursor;
 
 use super::*;
 
 const APP_LOG: &str = include_str!("../../app.log");
-const LOG_WITH_TRACE: &str = "2024-07-01 01:25:47.755 Unexpected error occurred in scheduled task
+const RECORD_WITH_TRACE: &str = "2024-07-01 01:25:47.755 Unexpected error occurred in scheduled task
 org.springframework.transaction.CannotCreateTransactionException: Could not open JPA EntityManager for transaction
     at org.springframework.orm.jpa.JpaTransactionManager.doBegin(JpaTransactionManager.java:466)
     at org.springframework.transaction.support.AbstractPlatformTransactionManager.startTransaction(AbstractPlatformTransactionManager.java:531)
@@ -130,7 +130,8 @@ fn is_end() {
 #[derive(Default, Debug)]
 struct MatchesAndCount {
     records: Vec<String>,
-    count: usize,
+    flush_count: usize,
+    exit: Option<Exit>,
 }
 
 impl Display for MatchesAndCount {
@@ -143,16 +144,13 @@ impl Display for MatchesAndCount {
 }
 
 impl Write for MatchesAndCount {
-    fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
-        Err(Error::from(ErrorKind::Unsupported))
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.records.push(String::from_utf8_lossy(buf).to_string());
+        Ok(buf.len())
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        Err(Error::from(ErrorKind::Unsupported))
-    }
-
-    fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
-        self.records.push(String::from_utf8_lossy(buf).to_string());
+        self.flush_count += 1;
         Ok(())
     }
 }
@@ -173,12 +171,10 @@ impl MatchesAndCount {
             reader: Box::new(Cursor::new(source.as_bytes())),
         };
         let mut mac = MatchesAndCount::default();
-        let count = handler.process_file(&mut source, &mut mac).unwrap();
-        if !handler.filename {
-            // w/ filenames, there are three writes per line, not one per record
-            assert_eq!(count, mac.records.len());
-        }
-        mac.count = count;
+        let mut sink = BufWriter::new(mac);
+        let exit = Some(handler.process_file(&mut source, &mut sink).unwrap());
+        mac = sink.into_inner().unwrap();
+        mac.exit = exit;
         mac
     }
 }
@@ -192,7 +188,7 @@ fn app_log_for_error() {
     let mac = MatchesAndCount::run(&handler, APP_LOG);
     assert_eq!(
         vec![
-            LOG_WITH_TRACE,
+            RECORD_WITH_TRACE,
             "2024-07-01 01:25:47.790 queue draining complete (ERROR)\n"
         ],
         mac.records
@@ -206,7 +202,7 @@ fn app_log_for_transaction() {
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
-    assert_eq!(vec![LOG_WITH_TRACE], mac.records);
+    assert_eq!(vec![RECORD_WITH_TRACE], mac.records);
 }
 
 #[test]
@@ -237,7 +233,7 @@ fn app_log_start() {
     let mac = MatchesAndCount::run(&handler, APP_LOG);
     assert_eq!(
         vec![
-            LOG_WITH_TRACE,
+            RECORD_WITH_TRACE,
             "2024-07-01 01:25:47.790 queue draining complete (ERROR)\n"
         ],
         mac.records
@@ -291,6 +287,8 @@ four",
         "spiffy.txt:one\nspiffy.txt:two\nspiffy.txt:four",
         mac.to_string()
     );
+    assert_eq!(3, mac.flush_count);
+    assert_eq!(Some(Exit::Match), mac.exit);
 }
 
 #[test]
@@ -310,6 +308,8 @@ three
 four",
     );
     assert_eq!("spiffy.txt:three\nspiffy.txt-four", mac.to_string());
+    assert_eq!(1, mac.flush_count);
+    assert_eq!(Some(Exit::Match), mac.exit);
 }
 
 #[test]
@@ -330,6 +330,8 @@ four
 ",
     );
     assert_eq!("spiffy.txt:three\nspiffy.txt-four\n", mac.to_string());
+    assert_eq!(1, mac.flush_count);
+    assert_eq!(Some(Exit::Match), mac.exit);
 }
 
 #[test]
@@ -378,4 +380,19 @@ six
         ],
         mac.records
     );
+    assert_eq!(3, mac.flush_count);
+    assert_eq!(Some(Exit::Match), mac.exit);
+}
+
+#[test]
+fn no_matches() {
+    let handler = Handler {
+        pattern: RegexSet::new([r"ZZZZZ"]).unwrap(),
+        max_count: Some(2),
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run(&handler, "input");
+    assert!(mac.records.is_empty());
+    assert_eq!(0, mac.flush_count);
+    assert_eq!(Some(Exit::NoMatch), mac.exit);
 }

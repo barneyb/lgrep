@@ -1,5 +1,5 @@
 use std::env;
-use std::io::{BufRead, BufWriter, ErrorKind, StdoutLock, Write};
+use std::io::{BufRead, BufWriter, ErrorKind, Write};
 
 use anyhow::{Context, Error, Result};
 use regex::{Regex, RegexSet};
@@ -41,7 +41,7 @@ struct Source<'a> {
     reader: Box<dyn BufRead>,
 }
 
-type Sink<'a> = BufWriter<StdoutLock<'a>>;
+type Sink = BufWriter<dyn Write>;
 
 impl Handler {
     pub(crate) fn run(&self) -> Result<Exit> {
@@ -88,7 +88,7 @@ impl Handler {
                     file_started = true;
                 }
                 if file_started && self.is_match(&record) {
-                    let mut r = if self.filename {
+                    let r = if self.filename {
                         with_filename(sink, &record, source.filename)
                     } else {
                         without_filename(sink, &record)

@@ -12,7 +12,7 @@ mod cli;
 mod handler;
 mod io;
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Debug)]
 pub enum Exit {
     Help,
     Error,
