@@ -8,10 +8,13 @@ use regex::Regex;
     author,
     arg_required_else_help = true,
     disable_help_flag = true,
-    long_about = "A grep-like tool for log files with multi-line records. Files (and STDIN) will be \
-                  automatically decompressed, assuming appropriate utilities are available on your \
-                  $PATH.",
-    after_long_help = "Environment:
+    after_long_help = "COMPRESSED LOGS:
+\n\
+                       Files (and STDIN) will be automatically decompressed, assuming appropriate \
+                       utilities are available on your $PATH. That is, 'gzcat log.gz | lgrep ERROR' \
+                       is unneeded; just do 'lgrep ERROR log.gz' (but don't do 'zlgrep ERROR log.gz').
+\n\
+                       ENVIRONMENT:
 \n\
                        The LGREP_LOG_PATTERN environment variable may be used to default the \
                        '--log-pattern' option, if you consistently need a different start-of-record \
@@ -57,6 +60,10 @@ pub(crate) struct Cli {
                      impact log/start/end patterns, only the main matching pattern(s)."
     )]
     pub invert_match: bool,
+
+    /// Only a count of selected records is written to standard output.
+    #[arg(short, long)]
+    pub count: bool,
 
     /// Label to use in place of “(standard input)” for a file name where a file name would normally be printed.
     #[arg(long)]
@@ -140,6 +147,7 @@ mod tests {
                 max_count: None,
                 invert_match: false,
                 label: None,
+                count: false,
                 log_pattern: None,
                 start: None,
                 end: None,

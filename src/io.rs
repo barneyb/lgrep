@@ -3,10 +3,10 @@ use std::io::BufRead;
 use anyhow::{Context, Result};
 use compress_io::compress::CompressIo;
 
-pub(crate) const STD_IN_FILENAME: &str = "-";
+pub(crate) const STDIN_FILENAME: &str = "-";
 
 pub fn get_reader(filename: &String) -> Result<Box<dyn BufRead>> {
-    Ok(if filename == STD_IN_FILENAME {
+    Ok(if filename == STDIN_FILENAME {
         Box::new(
             CompressIo::new() // implicitly STDIN
                 .bufreader()
