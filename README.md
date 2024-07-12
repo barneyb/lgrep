@@ -15,6 +15,9 @@ cargo install --path .
 lgrep -h
 ```
 
+Note that this isn't a "real" installation as a package manager (e.g., `yum` or `homebrew`) would do. It just puts the
+binary into Cargo's bin directory (which is on your `$PATH`). In particular, there's no manpage; use `lgrep --help`.
+
 ## Motivation
 
 Consider `app.log`, an 11-line file containing four log records (of one, eight, one, and one lines):
