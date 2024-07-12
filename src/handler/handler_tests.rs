@@ -18,20 +18,21 @@ impl Handler {
     fn empty() -> Handler {
         Handler {
             files: Vec::new(),
-            pattern: RegexSet::new([r"a"]).unwrap(),
+            pattern_set: RegexSet::new([r"a"]).unwrap(),
             max_count: None,
             invert_match: false,
-            label: DEFAULT_LABEL.to_owned(),
+            stdin_label: DEFAULT_STDIN_LABEL.to_owned(),
+            counts: false,
             log_pattern: DEFAULT_LOG_PATTERN.parse().unwrap(),
             start: None,
             end: None,
-            filename: false,
+            filenames: false,
         }
     }
 
     fn all_re() -> Handler {
         Handler {
-            pattern: RegexSet::new([r"P", r"Q", r"R"]).unwrap(),
+            pattern_set: RegexSet::new([r"P", r"Q", r"R"]).unwrap(),
             log_pattern: r"T".parse().unwrap(),
             start: Some(r"S".parse().unwrap()),
             end: Some(r"E".parse().unwrap()),
@@ -182,7 +183,7 @@ impl MatchesAndCount {
 #[test]
 fn app_log_for_error() {
     let handler = Handler {
-        pattern: RegexSet::new([r"(?i)error"]).unwrap(),
+        pattern_set: RegexSet::new([r"(?i)error"]).unwrap(),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
@@ -198,7 +199,7 @@ fn app_log_for_error() {
 #[test]
 fn app_log_for_transaction() {
     let handler = Handler {
-        pattern: RegexSet::new([r"startTransaction"]).unwrap(),
+        pattern_set: RegexSet::new([r"startTransaction"]).unwrap(),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
@@ -208,7 +209,7 @@ fn app_log_for_transaction() {
 #[test]
 fn simple_process_file() {
     let handler = Handler {
-        pattern: RegexSet::new([r"t"]).unwrap(),
+        pattern_set: RegexSet::new([r"t"]).unwrap(),
         log_pattern: Regex::new(r".").unwrap(),
         ..Handler::empty()
     };
@@ -226,7 +227,7 @@ line 4
 #[test]
 fn app_log_start() {
     let handler = Handler {
-        pattern: RegexSet::new([r"(?i)error"]).unwrap(),
+        pattern_set: RegexSet::new([r"(?i)error"]).unwrap(),
         start: Some(r"QueueProcessor".parse().unwrap()), // middle of the trace
         ..Handler::empty()
     };
@@ -243,7 +244,7 @@ fn app_log_start() {
 #[test]
 fn app_log_end() {
     let handler = Handler {
-        pattern: RegexSet::new([r"(?i)queue"]).unwrap(),
+        pattern_set: RegexSet::new([r"(?i)queue"]).unwrap(),
         end: Some(r"QueueProcessor".parse().unwrap()),
         ..Handler::empty()
     };
@@ -257,7 +258,7 @@ fn app_log_end() {
 #[test]
 fn app_log_final_line() {
     let handler = Handler {
-        pattern: RegexSet::new([r"unrelated"]).unwrap(),
+        pattern_set: RegexSet::new([r"unrelated"]).unwrap(),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
@@ -270,9 +271,9 @@ fn app_log_final_line() {
 #[test]
 fn filenames_singleline_records() {
     let handler = Handler {
-        pattern: RegexSet::new([r"o"]).unwrap(),
+        pattern_set: RegexSet::new([r"o"]).unwrap(),
         log_pattern: Regex::new(r".").unwrap(),
-        filename: true,
+        filenames: true,
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run_with_filename(
@@ -294,9 +295,9 @@ four",
 #[test]
 fn filenames_multiline_records() {
     let handler = Handler {
-        pattern: RegexSet::new([r"r"]).unwrap(),
+        pattern_set: RegexSet::new([r"r"]).unwrap(),
         log_pattern: Regex::new(r"e").unwrap(),
-        filename: true,
+        filenames: true,
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run_with_filename(
@@ -315,9 +316,9 @@ four",
 #[test]
 fn filenames_final_newline() {
     let handler = Handler {
-        pattern: RegexSet::new([r"r"]).unwrap(),
+        pattern_set: RegexSet::new([r"r"]).unwrap(),
         log_pattern: Regex::new(r"e").unwrap(),
-        filename: true,
+        filenames: true,
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run_with_filename(
@@ -337,7 +338,7 @@ four
 #[test]
 fn max_count() {
     let handler = Handler {
-        pattern: RegexSet::new([r"t", r"u"]).unwrap(),
+        pattern_set: RegexSet::new([r"t", r"u"]).unwrap(),
         log_pattern: Regex::new(r"").unwrap(),
         max_count: Some(2),
         ..Handler::empty()
@@ -356,7 +357,7 @@ four
 #[test]
 fn before_first_log_record() {
     let handler = Handler {
-        pattern: RegexSet::new([r"ee"]).unwrap(),
+        pattern_set: RegexSet::new([r"ee"]).unwrap(),
         log_pattern: Regex::new(r"LOG").unwrap(),
         ..Handler::empty()
     };
@@ -387,7 +388,7 @@ six
 #[test]
 fn no_matches() {
     let handler = Handler {
-        pattern: RegexSet::new([r"ZZZZZ"]).unwrap(),
+        pattern_set: RegexSet::new([r"ZZZZZ"]).unwrap(),
         max_count: Some(2),
         ..Handler::empty()
     };
@@ -395,4 +396,103 @@ fn no_matches() {
     assert!(mac.records.is_empty());
     assert_eq!(0, mac.flush_count);
     assert_eq!(Some(Exit::NoMatch), mac.exit);
+}
+
+#[test]
+fn counts_zero() {
+    let handler = Handler {
+        counts: true,
+        pattern_set: RegexSet::new([r"ZZZZ"]).unwrap(),
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run(
+        &handler,
+        "one
+two
+three
+four
+",
+    );
+    assert_eq!("0\n", mac.to_string());
+    assert_eq!(Some(Exit::NoMatch), mac.exit);
+}
+
+#[test]
+fn counts_zero_file() {
+    let handler = Handler {
+        counts: true,
+        pattern_set: RegexSet::new([r"ZZZZ"]).unwrap(),
+        filenames: true,
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run_with_filename(
+        &handler,
+        "sally.txt",
+        "one
+two
+three
+four
+",
+    );
+    assert_eq!("sally.txt:0\n", mac.to_string());
+    assert_eq!(Some(Exit::NoMatch), mac.exit);
+}
+
+#[test]
+fn counts_some() {
+    let handler = Handler {
+        counts: true,
+        pattern_set: RegexSet::new([r"r"]).unwrap(),
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run(
+        &handler,
+        "one
+two
+three
+four
+",
+    );
+    assert_eq!("2\n", mac.to_string());
+    assert_eq!(Some(Exit::Match), mac.exit);
+}
+
+#[test]
+fn counts_some_max() {
+    let handler = Handler {
+        counts: true,
+        pattern_set: RegexSet::new([r"e"]).unwrap(),
+        max_count: Some(1),
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run(
+        &handler,
+        "one
+two
+three
+four
+",
+    );
+    assert_eq!("1\n", mac.to_string());
+    assert_eq!(Some(Exit::Match), mac.exit);
+}
+
+#[test]
+fn counts_some_unreached_max() {
+    let handler = Handler {
+        counts: true,
+        pattern_set: RegexSet::new([r"e"]).unwrap(),
+        max_count: Some(99999),
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run(
+        &handler,
+        "one
+two
+three
+four
+",
+    );
+    assert_eq!("2\n", mac.to_string());
+    assert_eq!(Some(Exit::Match), mac.exit);
 }

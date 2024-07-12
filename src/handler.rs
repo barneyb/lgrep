@@ -4,7 +4,7 @@ use std::io::{BufRead, BufWriter, ErrorKind, Write};
 use anyhow::{Context, Error, Result};
 use regex::{Regex, RegexSet};
 
-use io::STD_IN_FILENAME;
+use io::STDIN_FILENAME;
 
 use crate::cli::Cli;
 use crate::{io, Exit};
@@ -12,20 +12,21 @@ use crate::{io, Exit};
 const ENV_LOG_PATTERN: &str = "LGREP_LOG_PATTERN";
 
 const DEFAULT_LOG_PATTERN: &str = r"(^|:)\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d";
-const DEFAULT_LABEL: &str = "(standard input)";
+const DEFAULT_STDIN_LABEL: &str = "(standard input)";
 
 const INSENSITIVE_PREFIX: &str = "(?i)";
 
 pub(crate) struct Handler {
     files: Vec<String>,
-    pattern: RegexSet,
+    pattern_set: RegexSet,
     max_count: Option<usize>,
     invert_match: bool,
-    label: String,
+    counts: bool,
+    stdin_label: String,
     log_pattern: Regex,
     start: Option<Regex>,
     end: Option<Regex>,
-    filename: bool,
+    filenames: bool,
 }
 
 fn opt_re_match(opt_re: &Option<Regex>, hay: &str) -> bool {
@@ -48,8 +49,9 @@ impl Handler {
         let mut sink = BufWriter::new(std::io::stdout().lock());
         let mut exit = Exit::NoMatch;
         for f in self.files.iter() {
+            #[rustfmt::skip]
             let mut source = Source {
-                filename: if f == STD_IN_FILENAME { &self.label } else { f },
+                filename: if f == STDIN_FILENAME { &self.stdin_label } else { f },
                 reader: io::get_reader(f)?,
             };
             match self.process_file(&mut source, &mut sink)? {
@@ -88,19 +90,8 @@ impl Handler {
                     file_started = true;
                 }
                 if file_started && self.is_match(&record) {
-                    let r = if self.filename {
-                        with_filename(sink, &record, source.filename)
-                    } else {
-                        without_filename(sink, &record)
-                    }
-                    .and_then(|_| sink.flush());
-                    if let Err(e) = r {
-                        return if e.kind() == ErrorKind::BrokenPipe {
-                            // nothing is listening anymore
-                            Ok(Exit::Terminate)
-                        } else {
-                            Err(Error::from(e)).context("Failed to write")
-                        };
+                    if !self.counts {
+                        self.write(sink, &record, source.filename)?;
                     }
                     match_count += 1;
                     if self.is_max_reached(match_count) {
@@ -118,6 +109,9 @@ impl Handler {
             }
             line.clear();
         }
+        if self.counts {
+            self.write(sink, &format!("{match_count}\n"), source.filename)?;
+        }
         Ok(if match_count == 0 {
             Exit::NoMatch
         } else {
@@ -134,7 +128,7 @@ impl Handler {
     }
 
     fn is_match(&self, hay: &str) -> bool {
-        self.invert_match ^ self.pattern.is_match(hay)
+        self.invert_match ^ self.pattern_set.is_match(hay)
     }
 
     fn has_start(&self) -> bool {
@@ -157,6 +151,24 @@ impl Handler {
     fn is_record_start(&self, hay: &str) -> bool {
         self.log_pattern.is_match(hay)
     }
+
+    fn write(&self, sink: &mut Sink, record: &str, filename: &str) -> Result<Exit> {
+        let r = if self.filenames {
+            with_filename(sink, record, filename)
+        } else {
+            without_filename(sink, record)
+        }
+        .and_then(|_| sink.flush());
+        if let Err(e) = r {
+            return if e.kind() == ErrorKind::BrokenPipe {
+                // nothing is listening anymore
+                Ok(Exit::Terminate)
+            } else {
+                Err(Error::from(e)).context("Failed to write")
+            };
+        }
+        Ok(Exit::Match)
+    }
 }
 
 fn default_log_pattern() -> Regex {
@@ -168,14 +180,14 @@ fn default_log_pattern() -> Regex {
     .unwrap()
 }
 
-fn without_filename(sink: &mut Sink, record: &String) -> std::io::Result<()> {
+fn without_filename(sink: &mut Sink, record: &str) -> std::io::Result<()> {
     sink.write_all(record.as_bytes())
 }
 
 const DELIM_START: &[u8] = &[b':'];
 const DELIM_FOLLOW: &[u8] = &[b'-'];
 
-fn with_filename(sink: &mut Sink, record: &String, filename: &str) -> std::io::Result<()> {
+fn with_filename(sink: &mut Sink, record: &str, filename: &str) -> std::io::Result<()> {
     let fn_bytes = filename.as_bytes();
     let lines = record.as_bytes().split_inclusive(|b| *b == b'\n');
     let mut delim = DELIM_START;
@@ -218,7 +230,7 @@ impl From<Cli> for Handler {
         }
         let mut files = cli.files;
         if files.is_empty() {
-            files.push(STD_IN_FILENAME.to_owned())
+            files.push(STDIN_FILENAME.to_owned())
         }
         // no-filename wins, otherwise if requested or multi-file
         let filename = if cli.no_filename {
@@ -227,11 +239,12 @@ impl From<Cli> for Handler {
             cli.filename || files.len() > 1
         };
         Handler {
-            pattern: RegexSet::new(&pattern_strings).unwrap(),
-            filename,
+            pattern_set: RegexSet::new(&pattern_strings).unwrap(),
+            filenames: filename,
             files,
             max_count: cli.max_count,
-            label: cli.label.unwrap_or_else(|| DEFAULT_LABEL.to_owned()),
+            counts: cli.count,
+            stdin_label: cli.label.unwrap_or_else(|| DEFAULT_STDIN_LABEL.to_owned()),
             invert_match: cli.invert_match,
             log_pattern,
             start,
