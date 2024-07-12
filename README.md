@@ -4,6 +4,11 @@
 of text, but not always. Since `grep` only understands lines of text, this can require some gymnastics to extract full
 log records.
 
+## Install
+
+Download a binary for your platform at https://github.com/barneyb/lgrep/releases/latest and put it on your path. If
+there isn't one for your platform, see below to build one from source.
+
 ## Build & Install
 
 Use `cargo` to build. Get it via http://rustup.rs if you don't have it already.
