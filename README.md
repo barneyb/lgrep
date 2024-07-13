@@ -15,6 +15,9 @@ cargo install --path .
 lgrep -h
 ```
 
+Note that this isn't a "real" installation as a package manager (e.g., `yum` or `homebrew`) would do. It just puts the
+binary into Cargo's bin directory (which is on your `$PATH`). In particular, there's no manpage; use `lgrep --help`.
+
 ## Motivation
 
 Consider `app.log`, an 11-line file containing four log records (of one, eight, one, and one lines):
@@ -75,10 +78,11 @@ org.springframework.transaction.CannotCreateTransactionException: Could not open
 
 The trick is that log records are clearly identifiable by "starts with a timestamp". `lgrep` uses this to build up a
 full log record and then check if it matches the pattern. If it matches, the whole record is printed out. This also
-means you can apply multi-line patterns! For example, a stacktrace where cookbook delegated to Spring:
+means you can apply multi-line patterns! For example, an error stacktrace where cookbook delegated to Spring (note
+the `\n` in the second pattern):
 
 ```
-% lgrep 'springframework.*\n.*cookbook' app.log
+% lgrep -i error app.log | lgrep  'org\.springframework.*\n.*\.cookbook\.'
 2024-07-01 01:25:47.755 Unexpected error occurred in scheduled task
 org.springframework.transaction.CannotCreateTransactionException: Could not open JPA EntityManager for transaction
     at org.springframework.orm.jpa.JpaTransactionManager.doBegin(JpaTransactionManager.java:466)
@@ -99,13 +103,14 @@ as `--start`, to skip lines in a file until some pattern matches. Use `-h` for a
 If your log records don't start with a timestamp, use `--log-pattern` to override the default "start of record" pattern.
 Each line of the input which matches the pattern starts a new record. If you want `lgrep` to behave like `grep`, pass
 `--log-pattern=` to match every line, and therefore equate records with lines. If your application consistently formats
-its logs (🤞), the `LGREP_LOG_PATTERN` environment variable can be used instead of supplying `--log-pattern` all over
-the place. The option still takes precedence, for ad hoc use.
+its various logs (🤞), the `LGREP_LOG_PATTERN` environment variable can be used instead of supplying `--log-pattern` all
+over the place. The option still takes precedence, for ad hoc use.
 
 ## Compressed Logs
 
 `lgrep` transparently supports compressed inputs using compression utilities available on your `$PATH`. This means there
-is process overhead, as well as decompression overhead. To demonstrate, compress `app.log` a couple ways:
+is process overhead, as well as decompression overhead, but it's still _much_ faster than `zgrep`. To demonstrate,
+compress `app.log` a couple ways:
 
 ```
 % gzip -k app.log
@@ -133,8 +138,8 @@ Whether named on the command line or streamed, `lgrep` will treat them equivalen
 ## Performance
 
 At my day job, I had an error id (`b2f444a1-918b-4dd7-994f-990097dd4faa`), and needed to get the corresponding stack
-trace out of our application logs. It was known to have occurred on one of six JVMs, and in a given hour (our
-frequency of log rotation). This was my starting point, on an 2019 Intel MBP running macOS Sonoma 14.5:
+trace out of our application logs. The error was known to have occurred on one of six JVMs, and during hour 15 of
+2024-07-06. This was my starting point, on an 2019 Intel MBP running macOS Sonoma 14.5:
 
 ```
 % ls -oh jvm*.gz
@@ -165,7 +170,8 @@ Turns out it was from `jvm-1`, and got the stack trace, so I'm done. But what ab
 zgrep b2f444a1-918b-4dd7-994f-990097dd4faa   10.44s user 0.02s system 99% cpu 10.477 total
 ```
 
-About 50% slower than `lgrep` processed _all_ the files?! How does `lgrep` do for just one file?
+About double the time for `lgrep` to process _all_ the files?! Maybe it was the lack of parallelism. How does `lgrep`
+perform for just one file?
 
 ```
 % time lgrep b2f444a1-918b-4dd7-994f-990097dd4faa jvm-1.log.2024-07-06-15.gz
@@ -176,7 +182,7 @@ About 50% slower than `lgrep` processed _all_ the files?! How does `lgrep` do fo
 lgrep b2f444a1-918b-4dd7-994f-990097dd4faa   0.90s user 0.21s system 169% cpu 0.652 total
 ```
 
-So `zgrep` is slow. What if the log is decompressed ahead of time:
+So `zgrep` is slow, and `lgrep` can parallelize, even over a single file. What if the log is decompressed ahead of time?
 
 ```
 % time gunzip jvm-1.log.2024-07-06-15.gz
@@ -192,7 +198,7 @@ grep b2f444a1-918b-4dd7-994f-990097dd4faa   9.99s user 0.08s system 99% cpu 10.0
 lgrep b2f444a1-918b-4dd7-994f-990097dd4faa   0.49s user 0.12s system 98% cpu 0.616 total
 ```
 
-Looks like it's actually `grep` that is slow. The decompression overhead is about half a second for both `lgrep`
-and `zgrep`, which `gunzip`'s runtime approximates.
+Looks like it's actually `grep` that is slow, and `lgrep` parallelizes between decompression and searching. The
+decompression overhead is about half a second for both `lgrep` and `zgrep`, which approximates `gunzip`'s runtime.
 
-This is obviously not a formal benchmark, just a quick comparison. But still pretty suggestive.
+This obviously isn't a formal benchmark, just a quick comparison, but fairly suggestive nonetheless.
