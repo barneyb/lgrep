@@ -36,7 +36,7 @@ impl From<Exit> for ExitCode {
 
 /// Run the grep, returning how many records matched.
 pub fn run() -> Result<Exit> {
-    let args = Cli::parse();
+    let args = Cli::parse().like_grep();
     // if no-filename (-h) without any patterns
     if args.no_filename && !args.has_patterns() {
         Cli::command()
