@@ -1,26 +1,15 @@
-name: CI Rust
+name: CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches:
+      - "master"
+      - "release/[1-9][0-9]*.[0-9]+.[0-9]+"
   pull_request:
-    branches: [ "master" ]
-
-env:
-  CARGO_TERM_COLOR: always
+    branches:
+      - "master"
+      - "release/[1-9][0-9]*.[0-9]+.[0-9]+"
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build.
-        run: cargo build --verbose
-      - name: Test.
-        run: cargo test --verbose
-      - name: Proper formatting!
-        run: cargo fmt --all -- --check
-      - name: No Dirtiness!
-        run: git diff --exit-code
+  ci:
+    uses: ./.github/workflows/build-and-verify.yml

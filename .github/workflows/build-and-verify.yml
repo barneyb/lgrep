@@ -1,0 +1,23 @@
+name: Build and Verify
+
+on:
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+
+  build-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout.
+        uses: actions/checkout@v4
+      - name: Build.
+        run: cargo build --verbose
+      - name: Tests!
+        run: cargo test --verbose
+      - name: Proper formatting!
+        run: cargo fmt --all -- --check
+      - name: No Dirtiness!
+        run: git diff --exit-code
