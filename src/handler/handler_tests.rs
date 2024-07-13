@@ -4,15 +4,10 @@ use std::io::Cursor;
 use super::*;
 
 const APP_LOG: &str = include_str!("../../app.log");
-const RECORD_WITH_TRACE: &str = "2024-07-01 01:25:47.755 Unexpected error occurred in scheduled task
-org.springframework.transaction.CannotCreateTransactionException: Could not open JPA EntityManager for transaction
-    at org.springframework.orm.jpa.JpaTransactionManager.doBegin(JpaTransactionManager.java:466)
-    at org.springframework.transaction.support.AbstractPlatformTransactionManager.startTransaction(AbstractPlatformTransactionManager.java:531)
-    at org.springframework.transaction.support.AbstractPlatformTransactionManager.getTransaction(AbstractPlatformTransactionManager.java:405)
-    at org.springframework.transaction.support.TransactionTemplate.execute(TransactionTemplate.java:137)
-    at com.brennaswitzer.cookbook.async.QueueProcessor.drainQueueInternal(QueueProcessor.java:68)
-    ... many more frames ...
-";
+const RECORD_DRAINING: &str = include_str!("../../record_draining.log");
+const RECORD_WITH_TRACE: &str = include_str!("../../record_with_trace.log");
+const RECORD_COMPLETE: &str = include_str!("../../record_complete.log");
+const RECORD_UNRELATED: &str = include_str!("../../record_unrelated.log");
 
 impl Handler {
     fn empty() -> Handler {
@@ -187,13 +182,7 @@ fn app_log_for_error() {
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
-    assert_eq!(
-        vec![
-            RECORD_WITH_TRACE,
-            "2024-07-01 01:25:47.790 queue draining complete (ERROR)\n"
-        ],
-        mac.records
-    );
+    assert_eq!(vec![RECORD_WITH_TRACE, RECORD_COMPLETE,], mac.records);
 }
 
 #[test]
@@ -232,13 +221,7 @@ fn app_log_start() {
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
-    assert_eq!(
-        vec![
-            RECORD_WITH_TRACE,
-            "2024-07-01 01:25:47.790 queue draining complete (ERROR)\n"
-        ],
-        mac.records
-    );
+    assert_eq!(vec![RECORD_WITH_TRACE, RECORD_COMPLETE], mac.records);
 }
 
 #[test]
@@ -249,10 +232,7 @@ fn app_log_end() {
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
-    assert_eq!(
-        vec!["2024-07-01 01:25:46.123 draining queue\n"],
-        mac.records
-    );
+    assert_eq!(vec![RECORD_DRAINING], mac.records);
 }
 
 #[test]
@@ -262,10 +242,7 @@ fn app_log_final_line() {
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
-    assert_eq!(
-        vec!["2024-07-01 01:25:48.000 some other unrelated log message\n"],
-        mac.records
-    );
+    assert_eq!(vec![RECORD_UNRELATED], mac.records);
 }
 
 #[test]
