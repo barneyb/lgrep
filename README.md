@@ -108,6 +108,9 @@ over the place. The option still takes precedence, for ad hoc use.
 
 ## Compressed Logs
 
+> ⚠️This feature is not available on Windows. You must decompress the logs yourself. If you have a Windows environment
+> and know Rust, a PR addressing this would be very welcome!
+
 `lgrep` transparently supports compressed inputs using compression utilities available on your `$PATH`. This means there
 is process overhead, as well as decompression overhead, but it's still _much_ faster than `zgrep`. To demonstrate,
 compress `app.log` a couple ways:
