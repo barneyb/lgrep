@@ -42,13 +42,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build/Test Release Binary.
+        id: build
         run: |
           cargo build --release --verbose
           cargo test --release --verbose
           ./target/release/lgrep --version
+          echo "version=`./target/release/lgrep --version | cut -d ' ' -f 2`" >> "$GITHUB_OUTPUT"
       - name: Upload Release Binary.
         uses: actions/upload-artifact@v4
         if: startsWith(github.ref, 'refs/heads/release/')
         with:
-          name: lgrep-${{ runner.os }}-${{ runner.arch }}
+          name: lgrep-${{ steps.build.outputs.version }}-${{ runner.os }}-${{ runner.arch }}
           path: target/release/lgrep
