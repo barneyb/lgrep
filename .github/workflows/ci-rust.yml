@@ -2,10 +2,15 @@ name: CI Rust
 
 on:
   push:
-    branches: [ "master", "release/[1-9]**" ]
-    tags: [ "v[1-9]**" ]
+    branches:
+      - "master"
+      - "release/[1-9]**"
+    tags:
+      - "v[1-9]**"
   pull_request:
-    branches: [ "master", "release/[1-9]**" ]
+    branches:
+      - "master"
+      - "release/[1-9]**"
 
 env:
   CARGO_TERM_COLOR: always
@@ -25,14 +30,19 @@ jobs:
         run: git diff --exit-code
   release-artifacts:
     if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
-    needs: [ build ]
+    needs:
+      - build
     strategy:
       matrix:
-        platform: [ ubuntu-latest ]
+        platform:
+          - macos-13 # x86_64
+          - macos-14 # arm64
+          - ubuntu-latest
+          - windows-latest
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
-      - name: Build Release Binary.
+      - name: Build/Test Release Binary.
         run: |
           cargo build --release --verbose
           cargo test --release --verbose
@@ -40,5 +50,8 @@ jobs:
         uses: actions/upload-artifact@v4
         if: startsWith(github.ref, 'refs/heads/release/')
         with:
-          name: lgrep-${{ matrix.platform }}
+          name: lgrep-${{ matrix.platform == 'macos-13' && 'macOS-x86_64'
+            || matrix.platform == 'macos-14' && 'macOS-arm64'
+            || matrix.platform == 'windows-latest' && 'Windows-x86_64'
+            || 'Linux-x86_64'}}
           path: target/release/lgrep
