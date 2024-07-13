@@ -216,7 +216,9 @@ impl From<Cli> for Handler {
     fn from(cli: Cli) -> Self {
         let mut patterns = cli.patterns;
         if let Some(p) = cli.pattern {
-            patterns.push(p);
+            if let Ok(re) = p.parse() {
+                patterns.push(re);
+            }
         }
         let mut pattern_strings = patterns.iter().map(|p| p.to_string()).collect::<Vec<_>>();
         let mut log_pattern = cli.log_pattern.unwrap_or_else(default_log_pattern);
