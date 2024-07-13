@@ -2,18 +2,17 @@ name: CI Rust
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "release/[1-9]**" ]
+    tags: [ "v[1-9]**" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "release/[1-9]**" ]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
       - name: Build.
@@ -24,3 +23,22 @@ jobs:
         run: cargo fmt --verbose --all -- --check
       - name: No Dirtiness!
         run: git diff --exit-code
+  release-artifacts:
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    needs: [ build ]
+    strategy:
+      matrix:
+        platform: [ ubuntu-latest ]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Release Binary.
+        run: |
+          cargo build --release --verbose
+          cargo test --release --verbose
+      - name: Upload Release Binary.
+        uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/heads/release/')
+        with:
+          name: lgrep-${{ matrix.platform }}
+          path: target/release/lgrep
