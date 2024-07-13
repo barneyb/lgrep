@@ -1,0 +1,8 @@
+2024-07-01 01:25:47.755 Unexpected error occurred in scheduled task
+org.springframework.transaction.CannotCreateTransactionException: Could not open JPA EntityManager for transaction
+    at org.springframework.orm.jpa.JpaTransactionManager.doBegin(JpaTransactionManager.java:466)
+    at org.springframework.transaction.support.AbstractPlatformTransactionManager.startTransaction(AbstractPlatformTransactionManager.java:531)
+    at org.springframework.transaction.support.AbstractPlatformTransactionManager.getTransaction(AbstractPlatformTransactionManager.java:405)
+    at org.springframework.transaction.support.TransactionTemplate.execute(TransactionTemplate.java:137)
+    at com.brennaswitzer.cookbook.async.QueueProcessor.drainQueueInternal(QueueProcessor.java:68)
+    ... many more frames ...
