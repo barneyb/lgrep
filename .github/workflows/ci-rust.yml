@@ -19,7 +19,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout.
+        uses: actions/checkout@v4
       - name: Build.
         run: cargo build --verbose
       - name: Test.
@@ -43,13 +44,16 @@ jobs:
           - windows-latest
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Build/Test Release Binary.
+      - name: Checkout.
+        uses: actions/checkout@v4
+      - name: Build.
+        run: cargo build --release --verbose
+      - name: Test.
+        run: cargo test --release --verbose
+      - name: Execute.
         id: build
         shell: bash
         run: |
-          cargo build --release --verbose
-          cargo test --release --verbose
           cargo run --release --quiet -- --version
           echo "version=`cargo run --release --quiet -- --version | cut -d ' ' -f 2`" >> "$GITHUB_OUTPUT"
       - name: Upload Release Binary.
@@ -57,4 +61,4 @@ jobs:
         if: startsWith(github.ref, 'refs/heads/release/')
         with:
           name: lgrep-${{ steps.build.outputs.version }}-${{ runner.os }}-${{ runner.arch }}
-          path: ${{ runner.os == 'Windows' && 'target\release\lgrep' || 'target/release/lgrep' }}
+          path: ${{ runner.os == 'Windows' && 'target\release\lgrep.exe' || 'target/release/lgrep' }}
