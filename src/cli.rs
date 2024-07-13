@@ -1,5 +1,27 @@
-use clap::Parser;
+use anyhow::{Context, Result};
+use clap::{CommandFactory, Parser};
 use regex::Regex;
+
+use crate::Exit;
+use crate::Exit::Help;
+
+#[cfg(not(target_os = "windows"))]
+const COMPRESSED_FILES: &str = "COMPRESSED FILES:
+\n\
+                       Files (and STDIN) will be automatically decompressed, assuming appropriate \
+                       utilities are available on your $PATH. That is, 'gzcat log.gz | lgrep ERROR' \
+                       is unneeded; just do 'lgrep ERROR log.gz' (but don't do 'zlgrep ERROR log.gz'). \
+                       This feature is not available on Windows.
+\n\
+                       ";
+
+const BASE_LONG_HELP: &str = "ENVIRONMENT:
+\n\
+                       The LGREP_LOG_PATTERN environment variable may be used to default the \
+                       '--log-pattern' option, if you consistently need a different start-of-record \
+                       pattern in your environment. Providing the option supersedes the variable.
+\n\
+                       There is no support for a GREP_OPTIONS equivalent. Use a shell function.";
 
 #[derive(Parser, Debug)]
 #[command(
@@ -8,19 +30,7 @@ use regex::Regex;
     author,
     arg_required_else_help = true,
     disable_help_flag = true,
-    after_long_help = "COMPRESSED LOGS:
-\n\
-                       Files (and STDIN) will be automatically decompressed, assuming appropriate \
-                       utilities are available on your $PATH. That is, 'gzcat log.gz | lgrep ERROR' \
-                       is unneeded; just do 'lgrep ERROR log.gz' (but don't do 'zlgrep ERROR log.gz').
-\n\
-                       ENVIRONMENT:
-\n\
-                       The LGREP_LOG_PATTERN environment variable may be used to default the \
-                       '--log-pattern' option, if you consistently need a different start-of-record \
-                       pattern in your environment. Providing the option supersedes the variable.
-\n\
-                       There is no support for a GREP_OPTIONS equivalent. Use a shell function."
+    after_long_help = BASE_LONG_HELP,
 )]
 pub(crate) struct Cli {
     /// Pattern to search
@@ -130,6 +140,30 @@ pub(crate) struct Cli {
 impl Cli {
     pub fn has_patterns(&self) -> bool {
         self.pattern.is_some() || !self.patterns.is_empty()
+    }
+
+    pub(crate) fn print_help(&self) -> Result<Exit> {
+        Cli::command()
+            .print_help()
+            .context("failed to print help")?;
+        Ok(Help)
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    pub(crate) fn print_long_help(&self) -> Result<Exit> {
+        Cli::command_for_update()
+            .after_long_help(COMPRESSED_FILES.to_owned() + BASE_LONG_HELP)
+            .print_long_help()
+            .context("failed to print long help")?;
+        Ok(Help)
+    }
+
+    #[cfg(target_os = "windows")]
+    pub(crate) fn print_long_help(&self) -> Result<Exit> {
+        Cli::command()
+            .print_long_help()
+            .context("failed to print long help")?;
+        Ok(Help)
     }
 }
 

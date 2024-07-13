@@ -1,12 +1,12 @@
 use std::process::ExitCode;
 
-use anyhow::{Context, Result};
-use clap::{CommandFactory, Parser};
+use anyhow::Result;
+use clap::Parser;
 
 use cli::Cli;
 
 use crate::handler::Handler;
-use crate::Exit::{Help, NoMatch};
+use crate::Exit::NoMatch;
 
 mod cli;
 mod handler;
@@ -39,15 +39,9 @@ pub fn run() -> Result<Exit> {
     let args = Cli::parse();
     // if no-filename (-h) without any patterns
     if args.no_filename && !args.has_patterns() {
-        Cli::command()
-            .print_help()
-            .context("failed to print help")?;
-        Ok(Help)
+        args.print_help()
     } else if args.help {
-        Cli::command()
-            .print_long_help()
-            .context("failed to print long help")?;
-        Ok(Help)
+        args.print_long_help()
     } else if let Some(0) = args.max_count {
         // weird, but permitted
         Ok(NoMatch)
