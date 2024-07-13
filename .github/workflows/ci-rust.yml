@@ -50,7 +50,5 @@ jobs:
         uses: actions/upload-artifact@v4
         if: startsWith(github.ref, 'refs/heads/release/')
         with:
-          name: lgrep-${{ matrix.platform == 'macos-13' && 'macOS-x86_64'
-            || matrix.platform == 'macos-14' && 'macOS-arm64'
-            || 'Linux-x86_64'}}
+          name: lgrep-${{ runner.os }}-${{ runner.arch }}
           path: target/release/lgrep
