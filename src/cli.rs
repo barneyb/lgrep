@@ -181,19 +181,6 @@ mod tests {
         }
     }
 
-    impl From<&str> for Cli {
-        fn from(value: &str) -> Self {
-            Self::from(value.trim().split_whitespace().collect::<Vec<_>>())
-        }
-    }
-
-    impl From<Vec<&str>> for Cli {
-        fn from(value: Vec<&str>) -> Self {
-            let mut matches = Cli::command().try_get_matches_from(value.iter()).unwrap();
-            <Self as FromArgMatches>::from_arg_matches_mut(&mut matches).unwrap()
-        }
-    }
-
     #[test]
     fn no_patterns() {
         let cli = Cli::empty();
@@ -224,134 +211,140 @@ mod tests {
         assert!(!cli.has_patterns());
     }
 
-    // grep -e Cli - < src/handler.rs
-    // grep -e Cli < src/handler.rs
-    // grep Cli - < src/handler.rs
-    // grep Cli < src/handler.rs
-    // grep -e Cli -e H src/handler.rs
-    // grep -e Cli H src/handler.rs
-    // grep -e Cli src/*.rs
-    // grep -e Cli src/handler.rs
-    // grep Cli H src/handler.rs
-    // grep Cli src/*.rs
-    // grep Cli src/handler.rs
+    #[cfg(test)]
+    mod like_grep {
+        use super::*;
 
-    fn assert_patterns(left: Vec<&str>, right: &Vec<Regex>) {
-        assert_eq!(
-            left,
-            right.iter().map(|p| p.to_string()).collect::<Vec<_>>()
-        );
-    }
+        impl From<&str> for Cli {
+            fn from(value: &str) -> Self {
+                Self::from(value.trim().split_whitespace().collect::<Vec<_>>()).like_grep()
+            }
+        }
 
-    fn assert_files(left: Vec<&str>, right: &Vec<String>) {
-        assert_eq!(left, right.iter().collect::<Vec<_>>());
-    }
+        impl From<Vec<&str>> for Cli {
+            fn from(value: Vec<&str>) -> Self {
+                let mut matches = Cli::command().try_get_matches_from(value.iter()).unwrap();
+                <Self as FromArgMatches>::from_arg_matches_mut(&mut matches).unwrap()
+            }
+        }
 
-    #[test]
-    fn like_grep_1() {
-        let cli = Cli::from("lgrep -e Cli -").like_grep();
-        assert_eq!(None, cli.pattern);
-        assert_patterns(vec!["Cli"], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec!["-"], &cli.files);
-    }
+        fn assert_patterns(left: Vec<&str>, right: &Vec<Regex>) {
+            assert_eq!(
+                left,
+                right.iter().map(|p| p.to_string()).collect::<Vec<_>>()
+            );
+        }
 
-    #[test]
-    fn like_grep_2() {
-        let cli = Cli::from("lgrep -e Cli").like_grep();
-        assert_eq!(None, cli.pattern);
-        assert_patterns(vec!["Cli"], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec![], &cli.files);
-    }
+        fn assert_files(left: Vec<&str>, right: &Vec<String>) {
+            assert_eq!(left, right.iter().collect::<Vec<_>>());
+        }
 
-    #[test]
-    fn like_grep_3() {
-        let cli = Cli::from("lgrep Cli -").like_grep();
-        assert_eq!(Some("Cli".to_owned()), cli.pattern);
-        assert_patterns(vec![], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec!["-"], &cli.files);
-    }
+        #[test]
+        fn like_grep_1() {
+            let cli = Cli::from("lgrep -e Cli -");
+            assert_eq!(None, cli.pattern);
+            assert_patterns(vec!["Cli"], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec!["-"], &cli.files);
+        }
 
-    #[test]
-    fn like_grep_4() {
-        let cli = Cli::from("lgrep Cli").like_grep();
-        assert_eq!(Some("Cli".to_owned()), cli.pattern);
-        assert_patterns(vec![], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec![], &cli.files);
-    }
+        #[test]
+        fn like_grep_2() {
+            let cli = Cli::from("lgrep -e Cli");
+            assert_eq!(None, cli.pattern);
+            assert_patterns(vec!["Cli"], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec![], &cli.files);
+        }
 
-    #[test]
-    fn like_grep_5() {
-        let cli = Cli::from("lgrep -e Cli -e H src/handler.rs").like_grep();
-        assert_eq!(None, cli.pattern);
-        assert_patterns(vec!["Cli", "H"], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec!["src/handler.rs"], &cli.files);
-    }
+        #[test]
+        fn like_grep_3() {
+            let cli = Cli::from("lgrep Cli -");
+            assert_eq!(Some("Cli".to_owned()), cli.pattern);
+            assert_patterns(vec![], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec!["-"], &cli.files);
+        }
 
-    #[test]
-    fn like_grep_6_1() {
-        let cli = Cli::from("lgrep -e Cli H src/handler.rs").like_grep();
-        assert_eq!(None, cli.pattern);
-        assert_patterns(vec!["Cli"], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec!["H", "src/handler.rs"], &cli.files);
-    }
+        #[test]
+        fn like_grep_4() {
+            let cli = Cli::from("lgrep Cli");
+            assert_eq!(Some("Cli".to_owned()), cli.pattern);
+            assert_patterns(vec![], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec![], &cli.files);
+        }
 
-    #[test]
-    fn like_grep_6_2() {
-        let cli = Cli::from("lgrep H -e Cli src/handler.rs").like_grep();
-        assert_eq!(None, cli.pattern);
-        assert_patterns(vec!["Cli"], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec!["H", "src/handler.rs"], &cli.files);
-    }
+        #[test]
+        fn like_grep_5() {
+            let cli = Cli::from("lgrep -e Cli -e H src/handler.rs");
+            assert_eq!(None, cli.pattern);
+            assert_patterns(vec!["Cli", "H"], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec!["src/handler.rs"], &cli.files);
+        }
 
-    #[test]
-    fn like_grep_7() {
-        let cli = Cli::from("lgrep -e Cli src/cli.rs src/handler.rs").like_grep();
-        assert_eq!(None, cli.pattern);
-        assert_patterns(vec!["Cli"], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec!["src/cli.rs", "src/handler.rs"], &cli.files);
-    }
+        #[test]
+        fn like_grep_6_1() {
+            let cli = Cli::from("lgrep -e Cli H src/handler.rs");
+            assert_eq!(None, cli.pattern);
+            assert_patterns(vec!["Cli"], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec!["H", "src/handler.rs"], &cli.files);
+        }
 
-    #[test]
-    fn like_grep_8() {
-        let cli = Cli::from("lgrep -e Cli src/handler.rs").like_grep();
-        assert_eq!(None, cli.pattern);
-        assert_patterns(vec!["Cli"], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec!["src/handler.rs"], &cli.files);
-    }
+        #[test]
+        fn like_grep_6_2() {
+            let cli = Cli::from("lgrep H -e Cli src/handler.rs");
+            assert_eq!(None, cli.pattern);
+            assert_patterns(vec!["Cli"], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec!["H", "src/handler.rs"], &cli.files);
+        }
 
-    #[test]
-    fn like_grep_9() {
-        let cli = Cli::from("lgrep Cli H src/handler.rs").like_grep();
-        assert_eq!(Some("Cli".to_owned()), cli.pattern);
-        assert_patterns(vec![], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec!["H", "src/handler.rs"], &cli.files);
-    }
+        #[test]
+        fn like_grep_7() {
+            let cli = Cli::from("lgrep -e Cli src/cli.rs src/handler.rs");
+            assert_eq!(None, cli.pattern);
+            assert_patterns(vec!["Cli"], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec!["src/cli.rs", "src/handler.rs"], &cli.files);
+        }
 
-    #[test]
-    fn like_grep_10() {
-        let cli = Cli::from("lgrep Cli src/cli.rs src/handler.rs").like_grep();
-        assert_eq!(Some("Cli".to_owned()), cli.pattern);
-        assert_patterns(vec![], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec!["src/cli.rs", "src/handler.rs"], &cli.files);
-    }
+        #[test]
+        fn like_grep_8() {
+            let cli = Cli::from("lgrep -e Cli src/handler.rs");
+            assert_eq!(None, cli.pattern);
+            assert_patterns(vec!["Cli"], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec!["src/handler.rs"], &cli.files);
+        }
 
-    #[test]
-    fn like_grep_11() {
-        let cli = Cli::from("lgrep Cli src/handler.rs").like_grep();
-        assert_eq!(Some("Cli".to_owned()), cli.pattern);
-        assert_patterns(vec![], &cli.patterns);
-        assert!(cli.has_patterns());
-        assert_files(vec!["src/handler.rs"], &cli.files);
+        #[test]
+        fn like_grep_9() {
+            let cli = Cli::from("lgrep Cli H src/handler.rs");
+            assert_eq!(Some("Cli".to_owned()), cli.pattern);
+            assert_patterns(vec![], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec!["H", "src/handler.rs"], &cli.files);
+        }
+
+        #[test]
+        fn like_grep_10() {
+            let cli = Cli::from("lgrep Cli src/cli.rs src/handler.rs");
+            assert_eq!(Some("Cli".to_owned()), cli.pattern);
+            assert_patterns(vec![], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec!["src/cli.rs", "src/handler.rs"], &cli.files);
+        }
+
+        #[test]
+        fn like_grep_11() {
+            let cli = Cli::from("lgrep Cli src/handler.rs");
+            assert_eq!(Some("Cli".to_owned()), cli.pattern);
+            assert_patterns(vec![], &cli.patterns);
+            assert!(cli.has_patterns());
+            assert_files(vec!["src/handler.rs"], &cli.files);
+        }
     }
 }
