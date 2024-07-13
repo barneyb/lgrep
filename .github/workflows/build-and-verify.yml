@@ -18,6 +18,6 @@ jobs:
       - name: Tests!
         run: cargo test --verbose
       - name: Proper formatting!
-        run: cargo fmt --all -- --check
+        run: cargo fmt --all --verbose -- --check
       - name: No Dirtiness!
         run: git diff --exit-code
