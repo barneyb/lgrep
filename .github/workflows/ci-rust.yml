@@ -38,20 +38,19 @@ jobs:
           - macos-13 # x86_64
           - macos-14 # arm64
           - ubuntu-latest
-          - windows-latest
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
       - name: Build/Test Release Binary.
+        id: build
         run: |
           cargo build --release --verbose
           cargo test --release --verbose
+          ./target/release/lgrep --version
+          echo "version=`./target/release/lgrep --version | cut -d ' ' -f 2`" >> "$GITHUB_OUTPUT"
       - name: Upload Release Binary.
         uses: actions/upload-artifact@v4
         if: startsWith(github.ref, 'refs/heads/release/')
         with:
-          name: lgrep-${{ matrix.platform == 'macos-13' && 'macOS-x86_64'
-            || matrix.platform == 'macos-14' && 'macOS-arm64'
-            || matrix.platform == 'windows-latest' && 'Windows-x86_64'
-            || 'Linux-x86_64'}}
+          name: lgrep-${{ steps.build.outputs.version }}-${{ runner.os }}-${{ runner.arch }}
           path: target/release/lgrep
