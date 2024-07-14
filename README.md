@@ -4,6 +4,12 @@
 of text, but not always. Since `grep` only understands lines of text, this can require some gymnastics to extract full
 log records.
 
+## Install
+
+You can grab binaries from the [latest release](https://github.com/barneyb/lgrep/releases/latest), if your platform is
+supported (Windows is coming in 1.3). Unzip, place on your `$PATH`, and that's it.
+Otherwise, you'll want to build from source…
+
 ## Build & Install
 
 Use `cargo` to build. Get it via http://rustup.rs if you don't have it already.
