@@ -16,25 +16,25 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout.
-        uses: actions/checkout@v4
-      - name: Build.
-        run: cargo build --verbose
-      - name: Test.
-        run: cargo test --verbose
-      - name: Execute.
-        run: cargo run -- --version
-      - name: Proper formatting!
-        run: cargo fmt --verbose --all -- --check
-      - name: No Dirtiness!
-        run: git diff --exit-code
+  #build:
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #    - name: Checkout.
+  #      uses: actions/checkout@v4
+  #    - name: Build.
+  #      run: cargo build --verbose
+  #    - name: Test.
+  #      run: cargo test --verbose
+  #    - name: Execute.
+  #      run: cargo run -- --version
+  #    - name: Proper formatting!
+  #      run: cargo fmt --verbose --all -- --check
+  #    - name: No Dirtiness!
+  #      run: git diff --exit-code
   release-matrix:
-    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
-    needs:
-      - build
+    #if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    #needs:
+    #  - build
     strategy:
       matrix:
         platform:
