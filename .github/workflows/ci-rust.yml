@@ -31,7 +31,7 @@ jobs:
   #      run: cargo fmt --verbose --all -- --check
   #    - name: No Dirtiness!
   #      run: git diff --exit-code
-  release-stupid-glibc-2-28:
+  release-stupid-old-glibc:
     #if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
     #needs:
     #  - build
@@ -52,11 +52,12 @@ jobs:
           cargo test --release --verbose
           cargo run --release --quiet -- --version
           echo "version=`cargo run --release --quiet -- --version | cut -d ' ' -f 2`" >> "$GITHUB_OUTPUT"
+          which strip && strip target/release/lgrep || echo "no strip found..."
       - name: Upload Release Binary.
         uses: actions/upload-artifact@v4
         with:
-          name: lgrep-${{ steps.build.outputs.version }}-${{ runner.os }}-${{ runner.arch }}-glibc2.24
-          path: ${{ matrix.binary }}
+          name: lgrep-${{ steps.build.outputs.version }}-${{ runner.os }}-${{ runner.arch }}-glibc2.28
+          path: target/release/lgrep
   release-matrix:
     if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
     #needs:
@@ -91,6 +92,7 @@ jobs:
           echo "label_suffix = ${{ matrix.label_suffix }}"
           cargo run --release --quiet -- --version
           echo "version=`cargo run --release --quiet -- --version | cut -d ' ' -f 2`" >> "$GITHUB_OUTPUT"
+          which strip && strip ${{ matrix.binary }} || echo "no strip..."
       - name: Upload Release Binary.
         uses: actions/upload-artifact@v4
         with:
