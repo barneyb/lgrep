@@ -59,21 +59,21 @@ jobs:
           name: lgrep-${{ steps.build.outputs.version }}-${{ runner.os }}-${{ runner.arch }}-glibc2.28
           path: target/release/lgrep
   release-matrix:
-    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    #if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
     #needs:
     #  - build
     strategy:
       matrix:
         platform:
-          - macos-13 # x86_64
+          #- macos-13 # x86_64
           - macos-14 # arm64
-          - ubuntu-latest
-          - windows-latest
+          #- ubuntu-latest
+          #- windows-latest
         include:
           - binary: target/release/lgrep
           - label_suffix: ""
-          - platform: windows-latest
-            binary: target\release\lgrep.exe
+          #- platform: windows-latest
+          #  binary: target\release\lgrep.exe
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout.
