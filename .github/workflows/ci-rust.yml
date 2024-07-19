@@ -47,6 +47,7 @@ jobs:
           uname -a
           which gcc && (echo '#include <errno.h>' | gcc -xc - -E -dM | grep -E '^#define __GLIBC(_MINOR)?__ ') || echo "not glibc..."
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          . "$HOME/.cargo/env"
           cargo build --release --verbose
           cargo test --release --verbose
           cargo run --release --quiet -- --version
