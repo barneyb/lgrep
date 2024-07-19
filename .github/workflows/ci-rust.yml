@@ -16,64 +16,37 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  #build:
-  #  runs-on: ubuntu-latest
-  #  steps:
-  #    - name: Checkout.
-  #      uses: actions/checkout@v4
-  #    - name: Build.
-  #      run: cargo build --verbose
-  #    - name: Test.
-  #      run: cargo test --verbose
-  #    - name: Execute.
-  #      run: cargo run -- --version
-  #    - name: Proper formatting!
-  #      run: cargo fmt --verbose --all -- --check
-  #    - name: No Dirtiness!
-  #      run: git diff --exit-code
-  release-stupid-old-glibc:
-    #if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
-    #needs:
-    #  - build
+  build:
     runs-on: ubuntu-latest
-    container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
       - name: Checkout.
         uses: actions/checkout@v4
-      - name: Do The Thing.
-        id: build
-        shell: bash
-        run: |
-          uname -a
-          which gcc && (echo '#include <errno.h>' | gcc -xc - -E -dM | grep -E '^#define __GLIBC(_MINOR)?__ ') || echo "not glibc..."
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          . "$HOME/.cargo/env"
-          cargo build --release --verbose
-          cargo test --release --verbose
-          cargo run --release --quiet -- --version
-          echo "version=`cargo run --release --quiet -- --version | cut -d ' ' -f 2`" >> "$GITHUB_OUTPUT"
-          which strip && strip target/release/lgrep || echo "no strip found..."
-      - name: Upload Release Binary.
-        uses: actions/upload-artifact@v4
-        with:
-          name: lgrep-${{ steps.build.outputs.version }}-${{ runner.os }}-${{ runner.arch }}-glibc2.28
-          path: target/release/lgrep
+      - name: Build.
+        run: cargo build --verbose
+      - name: Test.
+        run: cargo test --verbose
+      - name: Execute.
+        run: cargo run -- --version
+      - name: Proper formatting!
+        run: cargo fmt --verbose --all -- --check
+      - name: No Dirtiness!
+        run: git diff --exit-code
   release-matrix:
-    #if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
-    #needs:
-    #  - build
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    needs:
+      - build
     strategy:
       matrix:
         platform:
-          #- macos-13 # x86_64
+          - macos-13 # x86_64
           - macos-14 # arm64
-          #- ubuntu-latest
-          #- windows-latest
+          - ubuntu-latest
+          - windows-latest
         include:
           - binary: target/release/lgrep
           - label_suffix: ""
-          #- platform: windows-latest
-          #  binary: target\release\lgrep.exe
+          - platform: windows-latest
+            binary: target\release\lgrep.exe
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout.
@@ -86,6 +59,7 @@ jobs:
         id: build
         shell: bash
         run: |
+          uname -a
           echo "platform     = ${{ matrix.platform }}"
           which gcc && (echo '#include <errno.h>' | gcc -xc - -E -dM | grep -E '^#define __GLIBC(_MINOR)?__ ') || echo "not glibc..."
           echo "binary       = ${{ matrix.binary }}"
