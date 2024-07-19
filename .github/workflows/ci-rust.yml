@@ -58,8 +58,8 @@ jobs:
           path: ${{ matrix.binary }}
   release-matrix:
     if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
-    needs:
-      - build
+    #needs:
+    #  - build
     strategy:
       matrix:
         platform:
