@@ -32,7 +32,7 @@ jobs:
   #    - name: No Dirtiness!
   #      run: git diff --exit-code
   release-artifacts:
-    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    #if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
     #needs:
     #  - build
     strategy:
