@@ -243,11 +243,6 @@ impl From<Cli> for Handler {
             start = opt_insensitive_re(start);
             end = opt_insensitive_re(end);
         }
-        let color_mode = if let Some(cm) = cli.color {
-            cm
-        } else {
-            ColorChoice::Auto
-        };
         let mut files = cli.files;
         if files.is_empty() {
             files.push(STDIN_FILENAME.to_owned())
@@ -264,7 +259,7 @@ impl From<Cli> for Handler {
             max_count: cli.max_count,
             invert_match: cli.invert_match,
             counts: cli.count,
-            color_mode,
+            color_mode: cli.color,
             stdin_label: cli.label,
             log_pattern,
             start,

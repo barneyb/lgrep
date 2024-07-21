@@ -128,7 +128,7 @@ fn passthroughs() {
         max_count: Some(1),
         invert_match: true,
         count: true,
-        color: Some(ColorChoice::Always),
+        color: ColorChoice::Always,
         label: Some("goat".to_owned()),
         ..Cli::empty()
     }
