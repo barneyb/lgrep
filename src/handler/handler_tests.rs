@@ -10,25 +10,10 @@ const RECORD_COMPLETE: &str = include_str!("../../record_complete.log");
 const RECORD_UNRELATED: &str = include_str!("../../record_unrelated.log");
 
 impl Handler {
-    fn empty() -> Handler {
-        Handler {
-            files: Vec::new(),
-            pattern_set: RegexSet::new([r"a"]).unwrap(),
-            max_count: None,
-            invert_match: false,
-            stdin_label: DEFAULT_STDIN_LABEL.to_owned(),
-            counts: false,
-            log_pattern: DEFAULT_LOG_PATTERN.parse().unwrap(),
-            start: None,
-            end: None,
-            filenames: false,
-        }
-    }
-
     fn all_re() -> Handler {
         Handler {
             pattern_set: RegexSet::new([r"P", r"Q", r"R"]).unwrap(),
-            log_pattern: r"T".parse().unwrap(),
+            log_pattern: r"L".parse().unwrap(),
             start: Some(r"S".parse().unwrap()),
             end: Some(r"E".parse().unwrap()),
             ..Self::empty()
@@ -74,7 +59,7 @@ fn is_match() {
 #[test]
 fn is_record_start() {
     let h = Handler::all_re();
-    assert!(h.is_record_start("0T0"));
+    assert!(h.is_record_start("0L0"));
     assert!(!h.is_record_start("zzz"));
 }
 
@@ -243,6 +228,30 @@ fn app_log_final_line() {
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
     assert_eq!(vec![RECORD_UNRELATED], mac.records);
+}
+
+#[test]
+fn display_name_for_named_file() {
+    let handler = Handler { ..Handler::empty() };
+    assert_eq!(
+        "spiffy.log",
+        handler.display_name_for_filename("spiffy.log")
+    )
+}
+
+#[test]
+fn display_name_for_stdin() {
+    let handler = Handler { ..Handler::empty() };
+    assert_eq!("(standard input)", handler.display_name_for_filename("-"))
+}
+
+#[test]
+fn display_name_for_labeled_stdin() {
+    let handler = Handler {
+        stdin_label: Some("Johann".to_string()),
+        ..Handler::empty()
+    };
+    assert_eq!("Johann", handler.display_name_for_filename("-"))
 }
 
 #[test]

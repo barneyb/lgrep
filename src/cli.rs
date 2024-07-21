@@ -102,7 +102,7 @@ pub(crate) struct Cli {
                      Before the first log record starts, each line is treated as a separate record, \
                      as if invoked as grep.
 \n\
-                     Be careful if you pipe a multi-file lgrep into another lgprep! By default, the \
+                     Be careful if you pipe a multi-file lgrep into another lgrep! By default, the \
                      second lgrep will receive filename-prefixed lines, which your log pattern must \
                      gracefully handle. The default pattern accounts for this."
     )]
@@ -189,31 +189,43 @@ impl Cli {
 }
 
 #[cfg(test)]
+impl Cli {
+    pub(crate) fn empty() -> Cli {
+        Cli {
+            pattern: None,
+            files: vec![],
+            patterns: vec![],
+            ignore_case: false,
+            max_count: None,
+            invert_match: false,
+            count: false,
+            label: None,
+            log_pattern: None,
+            start: None,
+            end: None,
+            filename: false,
+            no_filename: false,
+            help: false,
+        }
+    }
+
+    pub(crate) fn all_re() -> Cli {
+        Cli {
+            pattern: Some(r"P".to_owned()),
+            patterns: vec![r"Q".parse().unwrap(), r"R".parse().unwrap()],
+            log_pattern: Some(r"L".parse().unwrap()),
+            start: Some(r"S".parse().unwrap()),
+            end: Some(r"E".parse().unwrap()),
+            ..Self::empty()
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use clap::{CommandFactory, FromArgMatches};
 
     use super::*;
-
-    impl Cli {
-        fn empty() -> Cli {
-            Cli {
-                pattern: None,
-                files: vec![],
-                patterns: vec![],
-                ignore_case: false,
-                max_count: None,
-                invert_match: false,
-                label: None,
-                count: false,
-                log_pattern: None,
-                start: None,
-                end: None,
-                filename: false,
-                no_filename: false,
-                help: false,
-            }
-        }
-    }
 
     #[test]
     fn no_patterns() {

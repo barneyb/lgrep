@@ -22,7 +22,7 @@ pub(crate) struct Handler {
     max_count: Option<usize>,
     invert_match: bool,
     counts: bool,
-    stdin_label: String,
+    stdin_label: Option<String>,
     log_pattern: Regex,
     start: Option<Regex>,
     end: Option<Regex>,
@@ -49,9 +49,8 @@ impl Handler {
         let mut sink = BufWriter::new(std::io::stdout().lock());
         let mut exit = Exit::NoMatch;
         for f in self.files.iter() {
-            #[rustfmt::skip]
             let mut source = Source {
-                filename: if f == STDIN_FILENAME { &self.stdin_label } else { f },
+                filename: self.display_name_for_filename(f),
                 reader: io::get_reader(f)?,
             };
             match self.process_file(&mut source, &mut sink)? {
@@ -63,6 +62,18 @@ impl Handler {
             }
         }
         Ok(exit)
+    }
+
+    fn display_name_for_filename<'a>(&'a self, f: &'a str) -> &'a str {
+        if f == STDIN_FILENAME {
+            if let Some(lbl) = &self.stdin_label {
+                lbl
+            } else {
+                DEFAULT_STDIN_LABEL
+            }
+        } else {
+            f
+        }
     }
 
     fn process_file(&self, source: &mut Source, sink: &mut Sink) -> Result<Exit> {
@@ -235,25 +246,46 @@ impl From<Cli> for Handler {
             files.push(STDIN_FILENAME.to_owned())
         }
         // no-filename wins, otherwise if requested or multi-file
-        let filename = if cli.no_filename {
+        let filenames = if cli.no_filename {
             false
         } else {
             cli.filename || files.len() > 1
         };
         Handler {
-            pattern_set: RegexSet::new(&pattern_strings).unwrap(),
-            filenames: filename,
             files,
+            pattern_set: RegexSet::new(&pattern_strings).unwrap(),
             max_count: cli.max_count,
-            counts: cli.count,
-            stdin_label: cli.label.unwrap_or_else(|| DEFAULT_STDIN_LABEL.to_owned()),
             invert_match: cli.invert_match,
+            counts: cli.count,
+            stdin_label: cli.label,
             log_pattern,
             start,
             end,
+            filenames,
         }
     }
 }
+
+impl Handler {
+    #[cfg(test)]
+    fn empty() -> Handler {
+        Handler {
+            files: Vec::new(),
+            pattern_set: RegexSet::new([r"a"]).unwrap(),
+            max_count: None,
+            invert_match: false,
+            counts: false,
+            stdin_label: None,
+            log_pattern: DEFAULT_LOG_PATTERN.parse().unwrap(),
+            start: None,
+            end: None,
+            filenames: false,
+        }
+    }
+}
+
+#[cfg(test)]
+mod from_cli_tests;
 
 #[cfg(test)]
 mod handler_tests;
