@@ -2,6 +2,7 @@ use std::env;
 use std::io::{BufRead, BufWriter, ErrorKind, Write};
 
 use anyhow::{Context, Error, Result};
+use clap::ColorChoice;
 use regex::{Regex, RegexSet};
 
 use io::STDIN_FILENAME;
@@ -22,6 +23,7 @@ pub(crate) struct Handler {
     max_count: Option<usize>,
     invert_match: bool,
     counts: bool,
+    color_mode: ColorChoice,
     stdin_label: Option<String>,
     log_pattern: Regex,
     start: Option<Regex>,
@@ -241,6 +243,11 @@ impl From<Cli> for Handler {
             start = opt_insensitive_re(start);
             end = opt_insensitive_re(end);
         }
+        let color_mode = if let Some(cm) = cli.color {
+            cm
+        } else {
+            ColorChoice::Auto
+        };
         let mut files = cli.files;
         if files.is_empty() {
             files.push(STDIN_FILENAME.to_owned())
@@ -257,6 +264,7 @@ impl From<Cli> for Handler {
             max_count: cli.max_count,
             invert_match: cli.invert_match,
             counts: cli.count,
+            color_mode,
             stdin_label: cli.label,
             log_pattern,
             start,
@@ -275,6 +283,7 @@ impl Handler {
             max_count: None,
             invert_match: false,
             counts: false,
+            color_mode: ColorChoice::Auto,
             stdin_label: None,
             log_pattern: DEFAULT_LOG_PATTERN.parse().unwrap(),
             start: None,

@@ -1,3 +1,5 @@
+use clap::ColorChoice;
+
 use crate::cli::Cli;
 use crate::handler::Handler;
 
@@ -11,6 +13,7 @@ fn empty() {
     assert_eq!(None, h.max_count);
     assert!(!h.invert_match);
     assert!(!h.counts);
+    assert_eq!(ColorChoice::Auto, h.color_mode);
     assert_eq!(None, h.stdin_label);
     assert_eq!(DEFAULT_LOG_PATTERN, h.log_pattern.to_string());
     assert_eq!(None, h.start.map(|re| re.to_string()));
@@ -125,6 +128,7 @@ fn passthroughs() {
         max_count: Some(1),
         invert_match: true,
         count: true,
+        color: Some(ColorChoice::Always),
         label: Some("goat".to_owned()),
         ..Cli::empty()
     }
@@ -132,5 +136,6 @@ fn passthroughs() {
     assert_eq!(Some(1), h.max_count);
     assert!(h.invert_match);
     assert!(h.counts);
+    assert_eq!(ColorChoice::Always, h.color_mode);
     assert_eq!(Some("goat".to_owned()), h.stdin_label);
 }

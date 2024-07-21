@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::{CommandFactory, Parser};
+use clap::{ColorChoice, CommandFactory, Parser};
 use regex::Regex;
 
 use crate::Exit;
@@ -21,9 +21,13 @@ const BASE_LONG_HELP: &str = "ENVIRONMENT:
                        '--log-pattern' option, if you consistently need a different start-of-record \
                        pattern in your environment. Providing the option supersedes the variable.
 \n\
+                       The GREP_COLORS environment variable will be used to color output, in \
+                       similar manner as grep. All grep capabilities are accepted, but not all \
+                       affect output. For example, lgrep doesn't have context lines.
+\n\
                        There is no support for a GREP_OPTIONS equivalent. Use a shell function.";
 
-#[derive(Parser, Debug)]
+#[derive(Debug, Parser)]
 #[command(
     version,
     about,
@@ -88,6 +92,18 @@ pub(crate) struct Cli {
     /// Label to use in place of “(standard input)” for a file name where a file name would normally be printed.
     #[arg(long)]
     pub label: Option<String>,
+
+    /// Color output, according to a subset of GREP_COLORs. --colour is also accepted.
+    #[arg(
+        long,
+        alias = "colour",
+        value_name = "WHEN",
+        long_help = "Surround the matched (non-empty) strings, and file names with escape sequences \
+                     to display them in color on the terminal. The colors are defined by the \
+                     environment variable GREP_COLORS. Unlike grep, WHEN is required, one of \
+                     never, always, or auto."
+    )]
+    pub color: Option<ColorChoice>,
 
     /// Pattern identifying the start of a log record.
     #[arg(
@@ -200,6 +216,7 @@ impl Cli {
             invert_match: false,
             count: false,
             label: None,
+            color: None,
             log_pattern: None,
             start: None,
             end: None,
