@@ -1,14 +1,15 @@
 use std::env;
-use std::io::{BufRead, BufWriter, ErrorKind, Write};
+use std::io::{BufWriter, ErrorKind, Write};
 
 use anyhow::{Context, Error, Result};
 use clap::ColorChoice;
 use regex::{Regex, RegexSet};
 
-use io::STDIN_FILENAME;
+use read::STDIN_FILENAME;
 
 use crate::cli::Cli;
-use crate::{io, Exit};
+use crate::read::Source;
+use crate::{read, Exit};
 
 const ENV_LOG_PATTERN: &str = "LGREP_LOG_PATTERN";
 
@@ -39,11 +40,6 @@ fn opt_re_match(opt_re: &Option<Regex>, hay: &str) -> bool {
     }
 }
 
-struct Source<'a> {
-    filename: &'a str,
-    reader: Box<dyn BufRead>,
-}
-
 type Sink = BufWriter<dyn Write>;
 
 impl Handler {
@@ -51,11 +47,9 @@ impl Handler {
         let mut sink = BufWriter::new(std::io::stdout().lock());
         let mut exit = Exit::NoMatch;
         for f in self.files.iter() {
-            let mut source = Source {
-                filename: self.display_name_for_filename(f),
-                reader: io::get_reader(f)?,
-            };
-            match self.process_file(&mut source, &mut sink)? {
+            let reader = read::get_reader(f)?;
+            let source = Source::new(self.display_name_for_filename(f), reader);
+            match self.process_file(source, &mut sink)? {
                 Exit::Terminate => {
                     return Ok(Exit::Terminate);
                 }
@@ -78,52 +72,63 @@ impl Handler {
         }
     }
 
-    fn process_file(&self, source: &mut Source, sink: &mut Sink) -> Result<Exit> {
+    fn process_file(&self, source: Source, sink: &mut Sink) -> Result<Exit> {
         let mut file_started = !self.has_start();
         let mut before_first_record = true;
         let mut match_count = 0;
+        let filename = source.filename;
+        let mut process_record = |record: &str| {
+            if record.is_empty() {
+                return Ok(true);
+            }
+            if self.is_end(&record) {
+                return Ok(false); // reached end
+            }
+            if !file_started && self.is_start(&record) {
+                file_started = true;
+            }
+            if file_started && self.is_match(&record) {
+                if !self.counts {
+                    self.write(sink, &record, filename)?;
+                }
+                match_count += 1;
+                if self.is_max_reached(match_count) {
+                    return Ok(false); // reached max count
+                }
+            }
+            Ok::<bool, anyhow::Error>(true)
+        };
         // an entire log record
         let mut record = String::new();
-        // a single line of input (w/ the newline, if present)
-        let mut line = String::new();
-        loop {
+        for line in source.lines() {
             // while let soaks up an Err; we want to propagate it
-            let n = source.reader.read_line(&mut line)?;
-            let is_eof = n == 0;
-            let start_of_record = self.is_record_start(&line);
-            if before_first_record && start_of_record {
-                before_first_record = false;
-            }
-            if before_first_record || start_of_record || is_eof {
-                // process the buffered record
-                if self.is_end(&record) {
-                    break; // reached end
+            match line {
+                Err(e) => {
+                    return Err(e)
+                        .with_context(|| format!("Failed to read line from '{}'", filename))
                 }
-                if !file_started && self.is_start(&record) {
-                    file_started = true;
-                }
-                if file_started && self.is_match(&record) {
-                    if !self.counts {
-                        self.write(sink, &record, source.filename)?;
+                Ok(l) => {
+                    let start_of_record = self.is_record_start(&l.text);
+                    if before_first_record && start_of_record {
+                        before_first_record = false;
                     }
-                    match_count += 1;
-                    if self.is_max_reached(match_count) {
-                        break; // reached max count
+                    if before_first_record || start_of_record {
+                        if !process_record(&record)? {
+                            record.clear(); // don't re-process post-loop
+                            break;
+                        }
+                        // start a new record with line
+                        record.clone_from(&l.text);
+                    } else {
+                        // add line to the current record
+                        record.push_str(&l.text);
                     }
                 }
-                if is_eof {
-                    break; // reached EOF
-                }
-                // start a new record with line
-                record.clone_from(&line);
-            } else {
-                // add line to the current record
-                record.push_str(&line);
             }
-            line.clear();
         }
+        process_record(&record)?;
         if self.counts {
-            self.write(sink, &format!("{match_count}\n"), source.filename)?;
+            self.write(sink, &format!("{match_count}\n"), filename)?;
         }
         Ok(if match_count == 0 {
             Exit::NoMatch

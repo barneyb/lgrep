@@ -147,13 +147,10 @@ impl MatchesAndCount {
         filename: &str,
         source: &'static str,
     ) -> MatchesAndCount {
-        let mut source = Source {
-            filename,
-            reader: Box::new(Cursor::new(source.as_bytes())),
-        };
+        let source = Source::new(filename, Box::new(Cursor::new(source.as_bytes())));
         let mut mac = MatchesAndCount::default();
         let mut sink = BufWriter::new(mac);
-        let exit = Some(handler.process_file(&mut source, &mut sink).unwrap());
+        let exit = Some(handler.process_file(source, &mut sink).unwrap());
         mac = sink.into_inner().unwrap();
         mac.exit = exit;
         mac

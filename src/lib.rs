@@ -10,7 +10,7 @@ use crate::Exit::NoMatch;
 
 mod cli;
 mod handler;
-mod io;
+mod read;
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum Exit {
