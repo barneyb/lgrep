@@ -1,4 +1,4 @@
-use regex::Regex;
+use regex_automata::meta::Regex;
 
 use crate::read::lines::{Line, Lines};
 
@@ -27,8 +27,7 @@ impl<'a> Records<'a> {
         if let Some(l) = self.curr_line.take() {
             Some(Ok(l))
         } else {
-            let l = self.lines.next();
-            l
+            self.lines.next()
         }
     }
 }
@@ -99,10 +98,6 @@ impl<'a> Iterator for Records<'a> {
 #[cfg(test)]
 mod test {
     use std::io::Cursor;
-
-    use regex::Regex;
-
-    use crate::read::lines::Lines;
 
     use super::*;
 

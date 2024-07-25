@@ -55,7 +55,7 @@ pub fn run() -> Result<Exit> {
         // weird, but permitted
         Ok(Exit::NoMatch)
     } else {
-        let handler: Handler = args.into();
+        let handler = Handler::new(args)?;
         handler.run()
     }
 }

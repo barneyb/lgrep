@@ -11,11 +11,12 @@ const RECORD_UNRELATED: &str = include_str!("../../record_unrelated.log");
 
 impl Handler {
     fn all_re() -> Handler {
+        let patterns = [r"P", r"Q", r"R"];
         Handler {
-            pattern_set: RegexSet::new([r"P", r"Q", r"R"]).unwrap(),
-            log_pattern: r"L".parse().unwrap(),
-            start: Some(r"S".parse().unwrap()),
-            end: Some(r"E".parse().unwrap()),
+            pattern_set: Regex::new_many(&patterns).unwrap(),
+            log_pattern: Regex::new(r"L").unwrap(),
+            start: Some(Regex::new(r"S").unwrap()),
+            end: Some(Regex::new(r"E").unwrap()),
             ..Self::empty()
         }
     }
@@ -59,27 +60,28 @@ fn is_match() {
 #[test]
 fn is_record_start() {
     let h = Handler::all_re();
-    assert!(h.is_record_start("0L0"));
-    assert!(!h.is_record_start("zzz"));
+    assert_re(&h.log_pattern, &["0L0"], &["zzz"]);
 }
 
 #[test]
 fn is_record_start_default() {
     let h = Handler::empty();
-    assert!(
-        h.is_record_start("2024-07-01 01:25:47.755 Unexpected error occurred in scheduled task")
-    );
-    assert!(!h.is_record_start("    at org.springframework.orm.jpa.JpaTransactionManager.doBegin(JpaTransactionManager.java:466)"));
+    assert_re(&h.log_pattern,
+              &["2024-07-01 01:25:47.755 Unexpected error occurred in scheduled task"],
+              &["    at org.springframework.orm.jpa.JpaTransactionManager.doBegin(JpaTransactionManager.java:466)"]);
 }
 
 #[test]
 fn is_record_start_custom() {
     let h = Handler {
-        log_pattern: "GOAT".parse().unwrap(),
+        log_pattern: Regex::new("GOAT").unwrap(),
         ..Handler::empty()
     };
-    assert!(h.is_record_start("i am a GOAT or something?"));
-    assert!(!h.is_record_start("definitely only a rabbit"));
+    assert_re(
+        &h.log_pattern,
+        &["i am a GOAT or something?"],
+        &["definitely only a rabbit"],
+    );
 }
 
 #[test]
@@ -160,7 +162,7 @@ impl MatchesAndCount {
 #[test]
 fn app_log_for_error() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"(?i)error"]).unwrap(),
+        pattern_set: Regex::new(r"(?i)error").unwrap(),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
@@ -170,7 +172,7 @@ fn app_log_for_error() {
 #[test]
 fn app_log_for_transaction() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"startTransaction"]).unwrap(),
+        pattern_set: Regex::new(r"startTransaction").unwrap(),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
@@ -180,7 +182,7 @@ fn app_log_for_transaction() {
 #[test]
 fn simple_process_file() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"t"]).unwrap(),
+        pattern_set: Regex::new(r"t").unwrap(),
         log_pattern: Regex::new(r".").unwrap(),
         ..Handler::empty()
     };
@@ -198,8 +200,8 @@ line 4
 #[test]
 fn app_log_start() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"(?i)error"]).unwrap(),
-        start: Some(r"QueueProcessor".parse().unwrap()), // middle of the trace
+        pattern_set: Regex::new(r"(?i)error").unwrap(),
+        start: Some(Regex::new(r"QueueProcessor").unwrap()), // middle of the trace
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
@@ -209,8 +211,8 @@ fn app_log_start() {
 #[test]
 fn app_log_end() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"(?i)queue"]).unwrap(),
-        end: Some(r"QueueProcessor".parse().unwrap()),
+        pattern_set: Regex::new(r"(?i)queue").unwrap(),
+        end: Some(Regex::new("QueueProcessor").unwrap()),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
@@ -220,7 +222,7 @@ fn app_log_end() {
 #[test]
 fn app_log_final_line() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"unrelated"]).unwrap(),
+        pattern_set: Regex::new(r"unrelated").unwrap(),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
@@ -254,7 +256,7 @@ fn display_name_for_labeled_stdin() {
 #[test]
 fn filenames_singleline_records() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"o"]).unwrap(),
+        pattern_set: Regex::new(r"o").unwrap(),
         log_pattern: Regex::new(r".").unwrap(),
         filenames: true,
         ..Handler::empty()
@@ -278,7 +280,7 @@ four",
 #[test]
 fn filenames_multiline_records() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"r"]).unwrap(),
+        pattern_set: Regex::new(r"r").unwrap(),
         log_pattern: Regex::new(r"e").unwrap(),
         filenames: true,
         ..Handler::empty()
@@ -299,7 +301,7 @@ four",
 #[test]
 fn filenames_final_newline() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"r"]).unwrap(),
+        pattern_set: Regex::new(r"r").unwrap(),
         log_pattern: Regex::new(r"e").unwrap(),
         filenames: true,
         ..Handler::empty()
@@ -321,7 +323,7 @@ four
 #[test]
 fn max_count() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"t", r"u"]).unwrap(),
+        pattern_set: Regex::new_many(&[r"t", r"u"]).unwrap(),
         log_pattern: Regex::new(r"").unwrap(),
         max_count: Some(2),
         ..Handler::empty()
@@ -340,7 +342,7 @@ four
 #[test]
 fn before_first_log_record() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"ee"]).unwrap(),
+        pattern_set: Regex::new(r"ee").unwrap(),
         log_pattern: Regex::new(r"LOG").unwrap(),
         ..Handler::empty()
     };
@@ -371,7 +373,7 @@ six
 #[test]
 fn no_matches() {
     let handler = Handler {
-        pattern_set: RegexSet::new([r"ZZZZZ"]).unwrap(),
+        pattern_set: Regex::new(r"ZZZZZ").unwrap(),
         max_count: Some(2),
         ..Handler::empty()
     };
@@ -385,7 +387,7 @@ fn no_matches() {
 fn counts_zero() {
     let handler = Handler {
         counts: true,
-        pattern_set: RegexSet::new([r"ZZZZ"]).unwrap(),
+        pattern_set: Regex::new(r"ZZZZ").unwrap(),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(
@@ -404,7 +406,7 @@ four
 fn counts_zero_file() {
     let handler = Handler {
         counts: true,
-        pattern_set: RegexSet::new([r"ZZZZ"]).unwrap(),
+        pattern_set: Regex::new(r"ZZZZ").unwrap(),
         filenames: true,
         ..Handler::empty()
     };
@@ -425,7 +427,7 @@ four
 fn counts_some() {
     let handler = Handler {
         counts: true,
-        pattern_set: RegexSet::new([r"r"]).unwrap(),
+        pattern_set: Regex::new(r"r").unwrap(),
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run(
@@ -444,7 +446,7 @@ four
 fn counts_some_max() {
     let handler = Handler {
         counts: true,
-        pattern_set: RegexSet::new([r"e"]).unwrap(),
+        pattern_set: Regex::new(r"e").unwrap(),
         max_count: Some(1),
         ..Handler::empty()
     };
@@ -464,7 +466,7 @@ four
 fn counts_some_unreached_max() {
     let handler = Handler {
         counts: true,
-        pattern_set: RegexSet::new([r"e"]).unwrap(),
+        pattern_set: Regex::new(r"e").unwrap(),
         max_count: Some(99999),
         ..Handler::empty()
     };

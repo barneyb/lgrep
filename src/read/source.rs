@@ -1,6 +1,6 @@
 use std::io::BufRead;
 
-use regex::Regex;
+use regex_automata::meta::Regex;
 
 use crate::read::lines::Lines;
 use crate::read::records::Records;
@@ -20,6 +20,6 @@ impl<'a> Source<'a> {
     }
 
     pub(crate) fn records(self, log_pattern: &Regex) -> Records {
-        Records::new(self.lines(), log_pattern)
+        self.lines().records(log_pattern)
     }
 }

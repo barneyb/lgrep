@@ -7,132 +7,148 @@ use super::*;
 
 #[test]
 fn empty() {
-    let h: Handler = Cli::empty().into();
+    let h = Handler::new(Cli::empty()).unwrap();
     assert_eq!(vec!["-"], h.files);
-    assert!(h.pattern_set.is_empty()); // nonsense, but lib::run guards us
+    assert_eq!(0, h.pattern_set.pattern_len()); // nonsense, but lib::run guards us
     assert_eq!(None, h.max_count);
     assert!(!h.invert_match);
     assert!(!h.counts);
     assert_eq!(ColorChoice::Auto, h.color_mode);
     assert_eq!(None, h.stdin_label);
-    assert_eq!(DEFAULT_LOG_PATTERN, h.log_pattern.to_string());
-    assert_eq!(None, h.start.map(|re| re.to_string()));
-    assert_eq!(None, h.end.map(|re| re.to_string()));
+    assert_re(
+        &h.log_pattern,
+        &["2024-07-25T12:02:57.123", "0000-00-00 00:00:00.0"],
+        &["monday", ""],
+    );
+    assert!(h.start.is_none());
+    assert!(h.end.is_none());
     assert!(!h.filenames);
 }
 
 #[test]
 fn pattern() {
-    let h: Handler = Cli {
+    let h = Handler::new(Cli {
         pattern: Some("goat".to_owned()),
         ..Cli::empty()
-    }
-    .into();
-    assert_eq!(vec!["goat"], h.pattern_set.patterns());
+    })
+    .unwrap();
+    assert_re(&h.pattern_set, &["a goat horn"], &["a cow horn"]);
 }
 
 #[test]
 fn patterns() {
-    let h: Handler = Cli {
-        patterns: vec![Regex::new("a").unwrap(), Regex::new("b").unwrap()],
+    let h = Handler::new(Cli {
+        patterns: vec!["a".to_owned(), "b".to_owned()],
         ..Cli::empty()
-    }
-    .into();
-    assert_eq!(vec!["a", "b"], h.pattern_set.patterns());
+    })
+    .unwrap();
+    assert_re(&h.pattern_set, &["a", "b"], &["c", "A"]);
 }
 
 #[test]
 fn pattern_and_patterns() {
-    let h: Handler = Cli {
-        pattern: Some("goat".to_owned()),
-        patterns: vec![Regex::new("a").unwrap(), Regex::new("b").unwrap()],
+    let h = Handler::new(Cli {
+        pattern: Some("cow".to_owned()),
+        patterns: vec!["a".to_owned(), "b".to_owned()],
         ..Cli::empty()
-    }
-    .into();
-    assert_eq!(vec!["a", "b", "goat"], h.pattern_set.patterns());
+    })
+    .unwrap();
+    assert_re(
+        &h.pattern_set,
+        &["the cowpen", "cantaloupe", "robber"],
+        &["cdefghijklmnopqrstuvwxyz", "ABCOW"],
+    );
 }
 
 #[test]
 fn ignore_case() {
-    let h: Handler = Cli {
+    let h = Handler::new(Cli {
         ignore_case: true,
         ..Cli::all_re()
-    }
-    .into();
-    assert_eq!(vec!["(?i)Q", "(?i)R", "(?i)P"], h.pattern_set.patterns());
-    assert_eq!("(?i)L", h.log_pattern.to_string());
-    assert_eq!(Some("(?i)S".to_owned()), h.start.map(|re| re.to_string()));
-    assert_eq!(Some("(?i)E".to_owned()), h.end.map(|re| re.to_string()));
+    })
+    .unwrap();
+    assert_re(
+        &h.pattern_set,
+        &["q", "r", "p", "Q", "R", "P"],
+        &["L", "S", "E"],
+    );
+    assert_re(&h.log_pattern, &["l", "L"], &["qwertyuiopasdfghjkzxcvbnm"]);
+    assert_re(
+        &h.start.unwrap(),
+        &["s", "S"],
+        &["qwertyuiopadfghjklzxcvbnm"],
+    );
+    assert_re(&h.end.unwrap(), &["e", "E"], &["qwrtyuiopasdfghjklzxcvbnm"]);
 }
 
 #[test]
 fn explicit_stdin() {
-    let h: Handler = Cli {
+    let h = Handler::new(Cli {
         files: vec!["-".to_owned()],
         ..Cli::empty()
-    }
-    .into();
+    })
+    .unwrap();
     assert_eq!(vec!["-"], h.files);
     assert!(!h.filenames);
 }
 
 #[test]
 fn one_file() {
-    let h: Handler = Cli {
+    let h = Handler::new(Cli {
         files: vec!["app.log".to_owned()],
         ..Cli::empty()
-    }
-    .into();
+    })
+    .unwrap();
     assert_eq!(vec!["app.log"], h.files);
     assert!(!h.filenames);
 }
 
 #[test]
 fn one_file_with_filenames() {
-    let h: Handler = Cli {
+    let h = Handler::new(Cli {
         files: vec!["app.log".to_owned()],
         filename: true,
         ..Cli::empty()
-    }
-    .into();
+    })
+    .unwrap();
     assert_eq!(vec!["app.log"], h.files);
     assert!(h.filenames);
 }
 
 #[test]
 fn several_files() {
-    let h: Handler = Cli {
+    let h = Handler::new(Cli {
         files: vec!["app.log".to_owned(), "-".to_owned(), "cheese".to_owned()],
         ..Cli::empty()
-    }
-    .into();
+    })
+    .unwrap();
     assert_eq!(vec!["app.log", "-", "cheese"], h.files);
     assert!(h.filenames);
 }
 
 #[test]
 fn several_files_no_filenames() {
-    let h: Handler = Cli {
+    let h = Handler::new(Cli {
         files: vec!["app.log".to_owned(), "-".to_owned(), "cheese".to_owned()],
         no_filename: true,
         ..Cli::empty()
-    }
-    .into();
+    })
+    .unwrap();
     assert_eq!(vec!["app.log", "-", "cheese"], h.files);
     assert!(!h.filenames);
 }
 
 #[test]
 fn passthroughs() {
-    let h: Handler = Cli {
+    let h = Handler::new(Cli {
         max_count: Some(1),
         invert_match: true,
         count: true,
         color: ColorChoice::Always,
         label: Some("goat".to_owned()),
         ..Cli::empty()
-    }
-    .into();
+    })
+    .unwrap();
     assert_eq!(Some(1), h.max_count);
     assert!(h.invert_match);
     assert!(h.counts);

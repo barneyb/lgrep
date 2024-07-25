@@ -3,7 +3,8 @@ use std::io::{BufWriter, ErrorKind, Write};
 
 use anyhow::{Context, Error, Result};
 use clap::ColorChoice;
-use regex::{Regex, RegexSet};
+use regex_automata::meta::Regex;
+use regex_automata::util::syntax;
 
 use read::STDIN_FILENAME;
 
@@ -16,11 +17,9 @@ const ENV_LOG_PATTERN: &str = "LGREP_LOG_PATTERN";
 const DEFAULT_LOG_PATTERN: &str = r"(^|:)\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d";
 const DEFAULT_STDIN_LABEL: &str = "(standard input)";
 
-const INSENSITIVE_PREFIX: &str = "(?i)";
-
 pub(crate) struct Handler {
     files: Vec<String>,
-    pattern_set: RegexSet,
+    pattern_set: Regex,
     max_count: Option<usize>,
     invert_match: bool,
     counts: bool,
@@ -138,10 +137,6 @@ impl Handler {
         opt_re_match(&self.end, hay)
     }
 
-    fn is_record_start(&self, hay: &str) -> bool {
-        self.log_pattern.is_match(hay)
-    }
-
     fn write(&self, sink: &mut Sink, record: &str, filename: &str) -> Result<Exit> {
         let r = if self.filenames {
             with_filename(sink, record, filename)
@@ -159,15 +154,6 @@ impl Handler {
         }
         Ok(Exit::Match)
     }
-}
-
-fn default_log_pattern() -> Regex {
-    if let Ok(p) = env::var(ENV_LOG_PATTERN) {
-        p.parse()
-    } else {
-        DEFAULT_LOG_PATTERN.parse()
-    }
-    .unwrap()
 }
 
 fn without_filename(sink: &mut Sink, record: &str) -> std::io::Result<()> {
@@ -190,36 +176,33 @@ fn with_filename(sink: &mut Sink, record: &str, filename: &str) -> std::io::Resu
     Ok(())
 }
 
-fn insensitive_str(re: &str) -> String {
-    INSENSITIVE_PREFIX.to_owned() + re
-}
-
-fn insensitive_re(re: Regex) -> Regex {
-    Regex::new(&insensitive_str(re.as_str())).unwrap()
-}
-
-fn opt_insensitive_re(opt_re: Option<Regex>) -> Option<Regex> {
-    opt_re.map(insensitive_re)
-}
-
-impl From<Cli> for Handler {
-    fn from(cli: Cli) -> Self {
+impl Handler {
+    pub(crate) fn new(cli: Cli) -> Result<Handler> {
+        let mut re_builder = Regex::builder();
+        if cli.ignore_case {
+            re_builder.syntax(syntax::Config::new().case_insensitive(true));
+        }
         let mut patterns = cli.patterns;
         if let Some(p) = cli.pattern {
-            if let Ok(re) = p.parse() {
-                patterns.push(re);
-            }
+            patterns.push(p);
         }
-        let mut pattern_strings = patterns.iter().map(|p| p.to_string()).collect::<Vec<_>>();
-        let mut log_pattern = cli.log_pattern.unwrap_or_else(default_log_pattern);
-        let mut start = cli.start;
-        let mut end = cli.end;
-        if cli.ignore_case {
-            pattern_strings = pattern_strings.iter().map(|s| insensitive_str(s)).collect();
-            log_pattern = insensitive_re(log_pattern);
-            start = opt_insensitive_re(start);
-            end = opt_insensitive_re(end);
-        }
+        let log_pattern = if let Some(p) = cli.log_pattern {
+            re_builder.build(&p)?
+        } else if let Ok(p) = env::var(ENV_LOG_PATTERN) {
+            re_builder.build(&p)?
+        } else {
+            re_builder.build(DEFAULT_LOG_PATTERN)?
+        };
+        let start = if let Some(p) = cli.start {
+            Some(re_builder.build(&p)?)
+        } else {
+            None
+        };
+        let end = if let Some(p) = cli.end {
+            Some(re_builder.build(&p)?)
+        } else {
+            None
+        };
         let mut files = cli.files;
         if files.is_empty() {
             files.push(STDIN_FILENAME.to_owned())
@@ -230,9 +213,9 @@ impl From<Cli> for Handler {
         } else {
             cli.filename || files.len() > 1
         };
-        Handler {
+        Ok(Handler {
             files,
-            pattern_set: RegexSet::new(&pattern_strings).unwrap(),
+            pattern_set: re_builder.build_many(&patterns)?,
             max_count: cli.max_count,
             invert_match: cli.invert_match,
             counts: cli.count,
@@ -242,7 +225,7 @@ impl From<Cli> for Handler {
             start,
             end,
             filenames,
-        }
+        })
     }
 }
 
@@ -251,17 +234,29 @@ impl Handler {
     fn empty() -> Handler {
         Handler {
             files: Vec::new(),
-            pattern_set: RegexSet::new([r"a"]).unwrap(),
+            pattern_set: Regex::new_many(&[r"a"]).unwrap(),
             max_count: None,
             invert_match: false,
             counts: false,
             color_mode: ColorChoice::Auto,
             stdin_label: None,
-            log_pattern: DEFAULT_LOG_PATTERN.parse().unwrap(),
+            log_pattern: Regex::new(DEFAULT_LOG_PATTERN).unwrap(),
             start: None,
             end: None,
             filenames: false,
         }
+    }
+}
+
+/// Assert a Regex is as it should be, based on the passed match and non-match
+/// lists of haystacks.
+#[cfg(test)]
+fn assert_re(re: &Regex, matches: &[&str], non_matches: &[&str]) {
+    for m in matches {
+        assert!(re.is_match(m), "Should have matched '{m}', but didn't");
+    }
+    for m in non_matches {
+        assert!(!re.is_match(m), "Shouldn't have matched '{m}', but did");
     }
 }
 

@@ -1,6 +1,6 @@
 use std::io::BufRead;
 
-use regex::Regex;
+use regex_automata::meta::Regex;
 
 use crate::read::records::Records;
 
