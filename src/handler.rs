@@ -106,11 +106,7 @@ impl Handler {
         if self.counts {
             self.write(sink, &format!("{match_count}\n"), filename)?;
         }
-        Ok(if match_count == 0 {
-            Exit::NoMatch
-        } else {
-            Exit::Match
-        })
+        Ok(Exit::from(match_count))
     }
 
     fn is_max_reached(&self, match_count: usize) -> bool {
