@@ -8,7 +8,7 @@ use regex::{Regex, RegexSet};
 use read::STDIN_FILENAME;
 
 use crate::cli::Cli;
-use crate::read::Source;
+use crate::read::source::Source;
 use crate::{read, Exit};
 
 const ENV_LOG_PATTERN: &str = "LGREP_LOG_PATTERN";
@@ -74,59 +74,35 @@ impl Handler {
 
     fn process_file(&self, source: Source, sink: &mut Sink) -> Result<Exit> {
         let mut file_started = !self.has_start();
-        let mut before_first_record = true;
         let mut match_count = 0;
         let filename = source.filename;
-        let mut process_record = |record: &str| {
-            if record.is_empty() {
-                return Ok(true);
-            }
-            if self.is_end(&record) {
-                return Ok(false); // reached end
-            }
-            if !file_started && self.is_start(&record) {
-                file_started = true;
-            }
-            if file_started && self.is_match(&record) {
-                if !self.counts {
-                    self.write(sink, &record, filename)?;
-                }
-                match_count += 1;
-                if self.is_max_reached(match_count) {
-                    return Ok(false); // reached max count
-                }
-            }
-            Ok::<bool, anyhow::Error>(true)
-        };
         // an entire log record
-        let mut record = String::new();
-        for line in source.lines() {
+        for record in source.records(&self.log_pattern) {
             // while let soaks up an Err; we want to propagate it
-            match line {
+            match record {
                 Err(e) => {
-                    return Err(e)
-                        .with_context(|| format!("Failed to read line from '{}'", filename))
+                    return Err(e).with_context(|| format!("Failed to read from '{}'", filename))
                 }
-                Ok(l) => {
-                    let start_of_record = self.is_record_start(&l.text);
-                    if before_first_record && start_of_record {
-                        before_first_record = false;
+                Ok(r) => {
+                    let text = r.text;
+                    if self.is_end(&text) {
+                        break;
                     }
-                    if before_first_record || start_of_record {
-                        if !process_record(&record)? {
-                            record.clear(); // don't re-process post-loop
-                            break;
+                    if !file_started && self.is_start(&text) {
+                        file_started = true;
+                    }
+                    if file_started && self.is_match(&text) {
+                        if !self.counts {
+                            self.write(sink, &text, filename)?;
                         }
-                        // start a new record with line
-                        record.clone_from(&l.text);
-                    } else {
-                        // add line to the current record
-                        record.push_str(&l.text);
+                        match_count += 1;
+                        if self.is_max_reached(match_count) {
+                            break; // reached max count
+                        }
                     }
                 }
             }
         }
-        process_record(&record)?;
         if self.counts {
             self.write(sink, &format!("{match_count}\n"), filename)?;
         }

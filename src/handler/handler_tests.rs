@@ -360,7 +360,7 @@ six
         vec![
             "one, thee father\n",
             "two, thee mother\n",
-            "LOG: three\nfour\n"
+            "LOG: three\nfour\n",
         ],
         mac.records
     );
