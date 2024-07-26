@@ -1,4 +1,3 @@
-use std::fmt::Display;
 use std::io::{BufWriter, ErrorKind, Write};
 
 use anyhow::{Context, Error, Result};
@@ -29,7 +28,7 @@ pub(crate) struct LgrepWrite<'a> {
 }
 
 impl<'a> LgrepWrite<'a> {
-    pub fn sink(
+    pub(crate) fn new(
         colorize: bool,
         filenames: bool,
         line_numbers: bool,
@@ -37,7 +36,7 @@ impl<'a> LgrepWrite<'a> {
     ) -> LgrepWrite<'a> {
         LgrepWrite {
             capabilities: if colorize {
-                Capabilities::default() // todo: read from environment!
+                Capabilities::from_env()
             } else {
                 Capabilities::none()
             },

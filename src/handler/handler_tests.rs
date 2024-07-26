@@ -1,8 +1,8 @@
 use std::fmt::{Display, Formatter};
-use std::io::BufWriter;
 use std::io::Cursor;
+use std::io::{BufWriter, Write};
 
-use clap::ColorChoice::Always;
+use clap::ColorChoice;
 
 use super::*;
 
@@ -155,8 +155,8 @@ impl MatchesAndCount {
         let source = Source::new(filename, Box::new(Cursor::new(source.as_bytes())));
         let mut mac = MatchesAndCount::default();
         let mut buf_writer = BufWriter::new(mac);
-        let mut write = LgrepWrite::sink(
-            handler.color_mode == Always,
+        let mut write = LgrepWrite::new(
+            handler.color_mode == ColorChoice::Always,
             handler.filenames,
             handler.line_numbers,
             &mut buf_writer,

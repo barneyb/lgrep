@@ -1,5 +1,5 @@
 use std::env;
-use std::io::{BufWriter, Write};
+use std::io::BufWriter;
 
 use anyhow::{Context, Result};
 use clap::ColorChoice;
@@ -52,7 +52,7 @@ impl Handler {
             ColorChoice::Never => false,
         };
         let mut sink = BufWriter::new(lock);
-        let mut write = LgrepWrite::sink(colorize, self.filenames, self.line_numbers, &mut sink);
+        let mut write = LgrepWrite::new(colorize, self.filenames, self.line_numbers, &mut sink);
         self.run_with(&mut write)
     }
 
