@@ -68,6 +68,12 @@ pub(crate) struct Cli {
     #[arg(short, long, value_name = "NUM")]
     pub max_count: Option<usize>,
 
+    /// Each output line is preceded by its relative line number in the file, starting at line 1.
+    ///
+    /// The line number counter is reset for each file processed.  This option is ignored if -c  is specified.
+    #[arg(short = 'n', long)]
+    pub line_number: bool,
+
     /// Selected lines are those NOT matching any of the specified patterns.
     ///
     /// Does not impact log/start/end patterns, only the main matching pattern(s).
@@ -194,6 +200,7 @@ impl Cli {
             patterns: vec![],
             ignore_case: false,
             max_count: None,
+            line_number: false,
             invert_match: false,
             count: false,
             label: None,

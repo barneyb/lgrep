@@ -1,8 +1,9 @@
 use std::env;
-use std::io::{BufWriter, ErrorKind, Write};
+use std::io::{BufWriter, Write};
 
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use clap::ColorChoice;
+use is_terminal::is_terminal;
 use regex_automata::meta::Regex;
 use regex_automata::util::syntax;
 
@@ -10,6 +11,7 @@ use read::STDIN_FILENAME;
 
 use crate::cli::Cli;
 use crate::read::source::Source;
+use crate::write::LgrepWrite;
 use crate::{read, Exit};
 
 const ENV_LOG_PATTERN: &str = "LGREP_LOG_PATTERN";
@@ -29,6 +31,7 @@ pub(crate) struct Handler {
     start: Option<Regex>,
     end: Option<Regex>,
     filenames: bool,
+    line_numbers: bool,
 }
 
 fn opt_re_match(opt_re: &Option<Regex>, hay: &str) -> bool {
@@ -219,6 +222,7 @@ impl Handler {
             max_count: cli.max_count,
             invert_match: cli.invert_match,
             counts: cli.count,
+            line_numbers: cli.line_number && !cli.count,
             color_mode: cli.color,
             stdin_label: cli.label,
             log_pattern,
@@ -244,6 +248,7 @@ impl Handler {
             start: None,
             end: None,
             filenames: false,
+            line_numbers: false,
         }
     }
 }
