@@ -22,15 +22,6 @@ impl Capabilities {
         }
         Capabilities::default()
     }
-
-    pub(super) fn none() -> Capabilities {
-        Capabilities {
-            match_text: None,
-            filename: None,
-            line_number: None,
-            separator: None,
-        }
-    }
 }
 
 impl Default for Capabilities {
@@ -117,7 +108,7 @@ fn parse_style(str: &str) -> Option<Style> {
             }
         }
     }
-    if result == Style::new() {
+    if result.is_plain() {
         None
     } else {
         Some(result)

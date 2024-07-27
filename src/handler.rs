@@ -10,7 +10,6 @@ use regex_automata::util::syntax;
 use read::STDIN_FILENAME;
 
 use crate::cli::Cli;
-use crate::read::records::Record;
 use crate::read::source::Source;
 use crate::write::LgrepWrite;
 use crate::{read, Exit};
@@ -106,9 +105,17 @@ impl Handler {
                             continue;
                         }
                     }
-                    if self.is_match(&r.text) {
+                    if self.invert_match ^ self.pattern_set.is_match(&r.text) {
                         if !self.counts {
-                            sink.write_record(filename, &r)?;
+                            if self.invert_match || !sink.needs_match_locations() {
+                                sink.write_record(filename, &r)?;
+                            } else {
+                                sink.write_record_with_matches(
+                                    filename,
+                                    &r,
+                                    self.pattern_set.find_iter(&r.text),
+                                )?;
+                            }
                         }
                         match_count += 1;
                         if self.is_max_reached(match_count) {
@@ -119,13 +126,7 @@ impl Handler {
             }
         }
         if self.counts {
-            let fake_record = Record {
-                text: format!("{match_count}\n"),
-                first_line: 0,
-                last_line: 0,
-                record_num: 0,
-            };
-            sink.write_record(filename, &fake_record)?;
+            sink.write_count(filename, match_count)?;
         }
         Ok(Exit::from(match_count))
     }
@@ -136,10 +137,6 @@ impl Handler {
         } else {
             false
         }
-    }
-
-    fn is_match(&self, hay: &str) -> bool {
-        self.invert_match ^ self.pattern_set.is_match(hay)
     }
 
     fn has_start(&self) -> bool {

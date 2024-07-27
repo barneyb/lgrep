@@ -50,17 +50,6 @@ fn with_end() {
 }
 
 #[test]
-fn is_match() {
-    let h = Handler::all_re();
-    assert!(h.is_match("0P0"));
-    assert!(!h.is_match("zzz"));
-    assert!(h.is_match("0Q0"));
-    assert!(!h.is_match("zzz"));
-    assert!(h.is_match("0R0"));
-    assert!(!h.is_match("zzz"));
-}
-
-#[test]
 fn is_record_start() {
     let h = Handler::all_re();
     assert_re(&h.log_pattern, &["0L0"], &["zzz"]);
@@ -290,8 +279,8 @@ three
 four",
     );
     assert_eq!(
-        "spiffy.txt:one\nspiffy.txt:two\nspiffy.txt:four",
-        mac.to_string()
+        vec!["spiffy.txt:one\n", "spiffy.txt:two\n", "spiffy.txt:four",],
+        mac.records
     );
     assert_eq!(3, mac.flush_count);
     assert_eq!(Some(Exit::Match), mac.exit);
@@ -314,7 +303,7 @@ two
 three
 four",
     );
-    assert_eq!("spiffy.txt:3:three\nspiffy.txt-4-four", mac.to_string());
+    assert_eq!(vec!["spiffy.txt:3:three\nspiffy.txt-4-four"], mac.records);
     assert_eq!(1, mac.flush_count);
     assert_eq!(Some(Exit::Match), mac.exit);
 }
@@ -335,12 +324,13 @@ fn colors() {
         "one
 two
 three
-four",
+four'n'stuff",
     );
     assert_eq!(
-        "\u{1b}[35mspiffy.txt\u{1b}[0m\u{1b}[36m:\u{1b}[0m\u{1b}[32m3\u{1b}[0m\u{1b}[36m:\u{1b}[0mthree
-\u{1b}[35mspiffy.txt\u{1b}[0m\u{1b}[36m-\u{1b}[0m\u{1b}[32m4\u{1b}[0m\u{1b}[36m-\u{1b}[0mfour",
-        mac.to_string()
+        vec![
+        "\u{1b}[35mspiffy.txt\u{1b}[0m\u{1b}[36m:\u{1b}[0m\u{1b}[32m3\u{1b}[0m\u{1b}[36m:\u{1b}[0mth\u{1b}[1m\u{1b}[31mr\u{1b}[0mee
+\u{1b}[35mspiffy.txt\u{1b}[0m\u{1b}[36m-\u{1b}[0m\u{1b}[32m4\u{1b}[0m\u{1b}[36m-\u{1b}[0mfou\u{1b}[1m\u{1b}[31mr\u{1b}[0m'n'stuff"],
+        mac.records
     );
     assert_eq!(1, mac.flush_count);
     assert_eq!(Some(Exit::Match), mac.exit);
@@ -363,7 +353,7 @@ three
 four
 ",
     );
-    assert_eq!("spiffy.txt:three\nspiffy.txt-four\n", mac.to_string());
+    assert_eq!(vec!["spiffy.txt:three\nspiffy.txt-four\n"], mac.records);
     assert_eq!(1, mac.flush_count);
     assert_eq!(Some(Exit::Match), mac.exit);
 }
