@@ -10,6 +10,7 @@ use crate::handler::Handler;
 mod cli;
 mod handler;
 mod read;
+mod write;
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum Exit {

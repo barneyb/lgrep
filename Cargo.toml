@@ -10,7 +10,6 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.86"
 clap = { version = "4.5.9", features = ["derive"] }
-colorful = "0.2.2"
 is-terminal = "0.4.12"
 regex-automata = "0.4.7"
 

@@ -1,5 +1,8 @@
 use std::fmt::{Display, Formatter};
+use std::io::BufWriter;
 use std::io::Cursor;
+
+use clap::ColorChoice::Always;
 
 use super::*;
 
@@ -138,8 +141,8 @@ impl Write for MatchesAndCount {
     }
 }
 
-// 'static here is a kludge, but it's just for tests, so meh
 impl MatchesAndCount {
+    // 'static here is a kludge, but it's just for tests, so meh
     fn run(handler: &Handler, source: &'static str) -> MatchesAndCount {
         Self::run_with_filename(handler, "input.txt", source)
     }
@@ -151,9 +154,15 @@ impl MatchesAndCount {
     ) -> MatchesAndCount {
         let source = Source::new(filename, Box::new(Cursor::new(source.as_bytes())));
         let mut mac = MatchesAndCount::default();
-        let mut sink = BufWriter::new(mac);
-        let exit = Some(handler.process_file(source, &mut sink).unwrap());
-        mac = sink.into_inner().unwrap();
+        let mut buf_writer = BufWriter::new(mac);
+        let mut write = LgrepWrite::sink(
+            handler.color_mode == Always,
+            handler.filenames,
+            handler.line_numbers,
+            &mut buf_writer,
+        );
+        let exit = Some(handler.process_file(source, &mut write).unwrap());
+        mac = buf_writer.into_inner().unwrap();
         mac.exit = exit;
         mac
     }
@@ -167,6 +176,17 @@ fn app_log_for_error() {
     };
     let mac = MatchesAndCount::run(&handler, APP_LOG);
     assert_eq!(vec![RECORD_WITH_TRACE, RECORD_COMPLETE,], mac.records);
+}
+
+#[test]
+fn app_log_for_not_error() {
+    let handler = Handler {
+        pattern_set: Regex::new(r"(?i)error").unwrap(),
+        invert_match: true,
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run(&handler, APP_LOG);
+    assert_eq!(vec![RECORD_DRAINING, RECORD_UNRELATED,], mac.records);
 }
 
 #[test]
@@ -283,6 +303,7 @@ fn filenames_multiline_records() {
         pattern_set: Regex::new(r"r").unwrap(),
         log_pattern: Regex::new(r"e").unwrap(),
         filenames: true,
+        line_numbers: true,
         ..Handler::empty()
     };
     let mac = MatchesAndCount::run_with_filename(
@@ -293,7 +314,34 @@ two
 three
 four",
     );
-    assert_eq!("spiffy.txt:three\nspiffy.txt-four", mac.to_string());
+    assert_eq!("spiffy.txt:3:three\nspiffy.txt-4-four", mac.to_string());
+    assert_eq!(1, mac.flush_count);
+    assert_eq!(Some(Exit::Match), mac.exit);
+}
+
+#[test]
+fn colors() {
+    let handler = Handler {
+        pattern_set: Regex::new(r"r").unwrap(),
+        log_pattern: Regex::new(r"e").unwrap(),
+        filenames: true,
+        line_numbers: true,
+        color_mode: ColorChoice::Always,
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run_with_filename(
+        &handler,
+        "spiffy.txt",
+        "one
+two
+three
+four",
+    );
+    assert_eq!(
+        "\u{1b}[35mspiffy.txt\u{1b}[0m\u{1b}[36m:\u{1b}[0m\u{1b}[32m3\u{1b}[0m\u{1b}[36m:\u{1b}[0mthree
+\u{1b}[35mspiffy.txt\u{1b}[0m\u{1b}[36m-\u{1b}[0m\u{1b}[32m4\u{1b}[0m\u{1b}[36m-\u{1b}[0mfour",
+        mac.to_string()
+    );
     assert_eq!(1, mac.flush_count);
     assert_eq!(Some(Exit::Match), mac.exit);
 }

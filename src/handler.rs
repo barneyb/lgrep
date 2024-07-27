@@ -10,6 +10,7 @@ use regex_automata::util::syntax;
 use read::STDIN_FILENAME;
 
 use crate::cli::Cli;
+use crate::read::records::Record;
 use crate::read::source::Source;
 use crate::write::LgrepWrite;
 use crate::{read, Exit};
@@ -42,16 +43,25 @@ fn opt_re_match(opt_re: &Option<Regex>, hay: &str) -> bool {
     }
 }
 
-type Sink = BufWriter<dyn Write>;
-
 impl Handler {
     pub(crate) fn run(&self) -> Result<Exit> {
-        let mut sink = BufWriter::new(std::io::stdout().lock());
+        let lock = std::io::stdout().lock();
+        let colorize = match self.color_mode {
+            ColorChoice::Auto => is_terminal(&lock),
+            ColorChoice::Always => true,
+            ColorChoice::Never => false,
+        };
+        let mut sink = BufWriter::new(lock);
+        let mut write = LgrepWrite::sink(colorize, self.filenames, self.line_numbers, &mut sink);
+        self.run_with(&mut write)
+    }
+
+    fn run_with(&self, sink: &mut LgrepWrite) -> Result<Exit> {
         let mut exit = Exit::NoMatch;
         for f in self.files.iter() {
             let reader = read::get_reader(f)?;
             let source = Source::new(self.display_name_for_filename(f), reader);
-            match self.process_file(source, &mut sink)? {
+            match self.process_file(source, sink)? {
                 Exit::Terminate => {
                     return Ok(Exit::Terminate);
                 }
@@ -74,7 +84,7 @@ impl Handler {
         }
     }
 
-    fn process_file(&self, source: Source, sink: &mut Sink) -> Result<Exit> {
+    fn process_file(&self, source: Source, sink: &mut LgrepWrite) -> Result<Exit> {
         let mut file_started = !self.has_start();
         let mut match_count = 0;
         let filename = source.filename;
@@ -86,16 +96,19 @@ impl Handler {
                     return Err(e).with_context(|| format!("Failed to read from '{}'", filename))
                 }
                 Ok(r) => {
-                    let text = r.text;
-                    if self.is_end(&text) {
+                    if self.is_end(&r.text) {
                         break;
                     }
-                    if !file_started && self.is_start(&text) {
-                        file_started = true;
+                    if !file_started {
+                        if self.is_start(&r.text) {
+                            file_started = true;
+                        } else {
+                            continue;
+                        }
                     }
-                    if file_started && self.is_match(&text) {
+                    if self.is_match(&r.text) {
                         if !self.counts {
-                            self.write(sink, &text, filename)?;
+                            sink.write_record(filename, &r)?;
                         }
                         match_count += 1;
                         if self.is_max_reached(match_count) {
@@ -106,7 +119,13 @@ impl Handler {
             }
         }
         if self.counts {
-            self.write(sink, &format!("{match_count}\n"), filename)?;
+            let fake_record = Record {
+                text: format!("{match_count}\n"),
+                first_line: 0,
+                last_line: 0,
+                record_num: 0,
+            };
+            sink.write_record(filename, &fake_record)?;
         }
         Ok(Exit::from(match_count))
     }
@@ -139,44 +158,6 @@ impl Handler {
     fn is_end(&self, hay: &str) -> bool {
         opt_re_match(&self.end, hay)
     }
-
-    fn write(&self, sink: &mut Sink, record: &str, filename: &str) -> Result<Exit> {
-        let r = if self.filenames {
-            with_filename(sink, record, filename)
-        } else {
-            without_filename(sink, record)
-        }
-        .and_then(|_| sink.flush());
-        if let Err(e) = r {
-            return if e.kind() == ErrorKind::BrokenPipe {
-                // nothing is listening anymore
-                Ok(Exit::Terminate)
-            } else {
-                Err(Error::from(e)).context("Failed to write")
-            };
-        }
-        Ok(Exit::Match)
-    }
-}
-
-fn without_filename(sink: &mut Sink, record: &str) -> std::io::Result<()> {
-    sink.write_all(record.as_bytes())
-}
-
-const DELIM_START: &[u8] = &[b':'];
-const DELIM_FOLLOW: &[u8] = &[b'-'];
-
-fn with_filename(sink: &mut Sink, record: &str, filename: &str) -> std::io::Result<()> {
-    let fn_bytes = filename.as_bytes();
-    let lines = record.as_bytes().split_inclusive(|b| *b == b'\n');
-    let mut delim = DELIM_START;
-    for l in lines {
-        sink.write_all(fn_bytes)?;
-        sink.write_all(delim)?;
-        sink.write_all(l)?;
-        delim = DELIM_FOLLOW;
-    }
-    Ok(())
 }
 
 impl Handler {
