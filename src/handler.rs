@@ -87,6 +87,7 @@ impl Handler {
         let mut file_started = !self.has_start();
         let mut match_count = 0;
         let filename = source.filename;
+        let needs_matches = !self.invert_match && sink.needs_match_locations();
         // an entire log record
         for record in source.records(&self.log_pattern) {
             // while let soaks up an Err; we want to propagate it
@@ -107,14 +108,14 @@ impl Handler {
                     }
                     if self.invert_match ^ self.pattern_set.is_match(&r.text) {
                         if !self.counts {
-                            if self.invert_match || !sink.needs_match_locations() {
-                                sink.write_record(filename, &r)?;
-                            } else {
+                            if needs_matches {
                                 sink.write_record_with_matches(
                                     filename,
                                     &r,
                                     self.pattern_set.find_iter(&r.text),
                                 )?;
+                            } else {
+                                sink.write_record(filename, &r)?;
                             }
                         }
                         match_count += 1;

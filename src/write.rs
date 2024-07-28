@@ -9,6 +9,8 @@ use crate::Exit;
 
 pub(crate) mod capabilities;
 
+const FLUSH_BUFFER_AT: usize = 8192;
+
 type Sink = BufWriter<dyn Write>;
 
 macro_rules! styled {
@@ -141,7 +143,9 @@ impl<'a> LgrepWrite<'a> {
                 }
             }
             write!(self.sink, "{l}")?;
-            // todo: flush buffer if larger than X?
+            if self.sink.buffer().len() >= FLUSH_BUFFER_AT {
+                self.sink.flush()?
+            }
             separator = '-';
             line_num += 1;
         }
