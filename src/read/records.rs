@@ -8,7 +8,6 @@ pub(crate) struct Records<'a> {
     before_first_record: bool,
     record_num: usize,
     curr_line: Option<Line>,
-    eof: bool,
 }
 
 impl<'a> Records<'a> {
@@ -19,7 +18,6 @@ impl<'a> Records<'a> {
             before_first_record: true,
             record_num: 0,
             curr_line: None,
-            eof: false,
         }
     }
 
@@ -51,9 +49,6 @@ impl<'a> Iterator for Records<'a> {
     type Item = anyhow::Result<Record>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.eof {
-            return None;
-        }
         let mut record = match self.advance() {
             None => {
                 return None;
