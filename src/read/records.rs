@@ -35,13 +35,11 @@ pub(crate) struct Record {
     pub text: String,
     pub record_num: usize,
     pub first_line: usize,
-    pub last_line: usize,
 }
 
 impl Record {
     pub(crate) fn push_line(&mut self, line: &Line) {
         self.text.push_str(&line.text);
-        self.last_line = line.line_num;
     }
 }
 
@@ -62,7 +60,6 @@ impl<'a> Iterator for Records<'a> {
                     text: l.text.to_owned(),
                     record_num: self.record_num,
                     first_line: l.line_num,
-                    last_line: l.line_num,
                 }
             }
         };
@@ -97,17 +94,11 @@ mod test {
     use super::*;
 
     impl Record {
-        pub(crate) fn new(
-            text: &str,
-            record_num: usize,
-            first_line: usize,
-            last_line: usize,
-        ) -> Record {
+        pub(crate) fn new(text: &str, record_num: usize, first_line: usize) -> Record {
             Record {
                 text: text.to_owned(),
                 record_num,
                 first_line,
-                last_line,
             }
         }
     }
@@ -124,9 +115,9 @@ mod test {
         let re = Regex::new("o").unwrap();
         assert_eq!(
             vec![
-                Record::new("one\n", 1, 1, 1),
-                Record::new("two\nthree\n", 2, 2, 3),
-                Record::new("four\nfive", 3, 4, 5),
+                Record::new("one\n", 1, 1),
+                Record::new("two\nthree\n", 2, 2),
+                Record::new("four\nfive", 3, 4),
             ],
             to_records(
                 "one
@@ -143,10 +134,10 @@ four\nfive",
         let re = Regex::new(r"LOG").unwrap();
         assert_eq!(
             vec![
-                Record::new("one, thee father\n", 1, 1, 1),
-                Record::new("two, thee mother\n", 2, 2, 2),
-                Record::new("LOG: three\nfour\n", 3, 3, 4),
-                Record::new("LOG: five\nsix\n", 4, 5, 6),
+                Record::new("one, thee father\n", 1, 1),
+                Record::new("two, thee mother\n", 2, 2),
+                Record::new("LOG: three\nfour\n", 3, 3),
+                Record::new("LOG: five\nsix\n", 4, 5),
             ],
             to_records(
                 "one, thee father
