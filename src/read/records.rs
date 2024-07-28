@@ -21,7 +21,7 @@ impl<'a> Records<'a> {
         }
     }
 
-    pub(crate) fn advance(&mut self) -> Option<anyhow::Result<Line>> {
+    fn advance(&mut self) -> Option<anyhow::Result<Line>> {
         if let Some(l) = self.curr_line.take() {
             Some(Ok(l))
         } else {
