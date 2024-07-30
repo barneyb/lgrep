@@ -10,7 +10,8 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.86"
 clap = { version = "4.5.9", features = ["derive"] }
-regex = "1.10.5"
+is-terminal = "0.4.12"
+regex-automata = "0.4.7"
 
 [target.'cfg(not(windows))'.dependencies]
 compress_io = "0.5.0"

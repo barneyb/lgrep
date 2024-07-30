@@ -6,9 +6,8 @@ log records.
 
 ## Install
 
-You can grab binaries from the [latest release](https://github.com/barneyb/lgrep/releases/latest), if your platform is
-supported (Windows is coming in 1.3). Unzip, place on your `$PATH`, and that's it.
-Otherwise, you'll want to build from source…
+You can grab binaries from the [latest release](https://github.com/barneyb/lgrep/releases/latest), for supported
+platforms. Unzip, place on your `$PATH`, and that's it. Otherwise, you'll want to build from source…
 
 ## Build & Install
 
@@ -104,12 +103,16 @@ org.springframework.transaction.CannotCreateTransactionException: Could not open
 `lgrep` supports a number of options that `grep` supports, such as `-v` and `-i`. It also supports a few new ones, such
 as `--start`, to skip lines in a file until some pattern matches. Use `-h` for a summary, or `--help` for gory detail.
 
+It also supports a subset of GNU `grep`'s `GREP_COLORS` capabilities: `mt`/`ms`, `fn`, `ln`, and `se`. All capabilities
+are accepted, any others are simply ignored. Like `grep`, the default is `ms=01;31:fn=35:ln=32:se=36`. For the moment,
+only 16-color mode codes are respected.
+
 ## Log Format
 
 If your log records don't start with a timestamp, use `--log-pattern` to override the default "start of record" pattern.
 Each line of the input which matches the pattern starts a new record. If you want `lgrep` to behave like `grep`, pass
 `--log-pattern=` to match every line, and therefore equate records with lines. If your application consistently formats
-its various logs (🤞), the `LGREP_LOG_PATTERN` environment variable can be used instead of supplying `--log-pattern` all
+its various logs, the `LGREP_LOG_PATTERN` environment variable can be used instead of supplying `--log-pattern` all
 over the place. The option still takes precedence, for ad hoc use.
 
 ## Compressed Logs

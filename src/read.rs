@@ -4,12 +4,16 @@ use anyhow::{Context, Result};
 
 pub(crate) const STDIN_FILENAME: &str = "-";
 
+pub(crate) mod lines;
+pub(crate) mod records;
+pub(crate) mod source;
+
 /// Open a [BufRead] for the named file, or STDIN if the filename is '-'. If the
 /// stream is compressed using a well-known format (e.g. gzip), it will be
 /// decompressed automatically _on Unix-ish platforms_, by shelling out to an
 /// appropriate utility on your `$PATH`. On Windows, you must manually
 /// decompress the stream/file first.
-pub fn get_reader(filename: &String) -> Result<Box<dyn BufRead>> {
+pub(crate) fn get_reader(filename: &String) -> Result<Box<dyn BufRead>> {
     if filename == STDIN_FILENAME {
         open_stdin().with_context(|| "Failed to open STDIN for reading")
     } else {
