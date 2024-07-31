@@ -23,6 +23,15 @@ lgrep -h
 Note that this isn't a "real" installation as a package manager (e.g., `yum` or `homebrew`) would do. It just puts the
 binary into Cargo's bin directory (which is on your `$PATH`). In particular, there's no manpage; use `lgrep --help`.
 
+## Options
+
+`lgrep` supports a number of options that `grep` supports, such as `-v` and `-i`. It also supports a few new ones, such
+as `--start`, to skip lines in a file until some pattern matches. Use `-h` for a summary, or `--help` for gory detail.
+
+It also supports a subset of GNU `grep`'s `GREP_COLORS` capabilities: `mt`/`ms`, `fn`, `ln`, and `se`. All capabilities
+are accepted, any others are simply ignored. Like `grep`, the default is `ms=01;31:fn=35:ln=32:se=36`. For the moment,
+only 16-color mode codes are respected.
+
 ## Motivation
 
 Consider `app.log`, an 11-line file containing four log records (of one, eight, one, and one lines):
@@ -87,7 +96,7 @@ means you can apply multi-line patterns! For example, an error stacktrace where 
 the `\n` in the second pattern):
 
 ```
-% lgrep -i error app.log | lgrep  'org\.springframework.*\n.*\.cookbook\.'
+% lgrep -i error app.log | lgrep 'org\.springframework.*\n.*\.cookbook\.'
 2024-07-01 01:25:47.755 Unexpected error occurred in scheduled task
 org.springframework.transaction.CannotCreateTransactionException: Could not open JPA EntityManager for transaction
     at org.springframework.orm.jpa.JpaTransactionManager.doBegin(JpaTransactionManager.java:466)
@@ -98,22 +107,17 @@ org.springframework.transaction.CannotCreateTransactionException: Could not open
     ... many more frames ...
 ```
 
-## Options
+May as well abuse color support as well, using background for error and foreground for cookbook-to-Spring:
 
-`lgrep` supports a number of options that `grep` supports, such as `-v` and `-i`. It also supports a few new ones, such
-as `--start`, to skip lines in a file until some pattern matches. Use `-h` for a summary, or `--help` for gory detail.
-
-It also supports a subset of GNU `grep`'s `GREP_COLORS` capabilities: `mt`/`ms`, `fn`, `ln`, and `se`. All capabilities
-are accepted, any others are simply ignored. Like `grep`, the default is `ms=01;31:fn=35:ln=32:se=36`. For the moment,
-only 16-color mode codes are respected.
+![multi-stage colored output](multi-color.png)
 
 ## Log Format
 
 If your log records don't start with a timestamp, use `--log-pattern` to override the default "start of record" pattern.
 Each line of the input which matches the pattern starts a new record. If you want `lgrep` to behave like `grep`, pass
 `--log-pattern=` to match every line, and therefore equate records with lines. If your application consistently formats
-its various logs, the `LGREP_LOG_PATTERN` environment variable can be used instead of supplying `--log-pattern` all
-over the place. The option still takes precedence, for ad hoc use.
+its various logs in a different way, the `LGREP_LOG_PATTERN` environment variable can be used instead of
+supplying `--log-pattern` all over the place. The option still takes precedence, for ad hoc use.
 
 ## Compressed Logs
 
