@@ -56,6 +56,9 @@ impl<'a> Iterator for Records<'a> {
             }
             Some(Ok(l)) => {
                 self.record_num += 1;
+                if self.log_pattern.is_match(&l.text) {
+                    self.before_first_record = false;
+                }
                 Record {
                     text: l.text.to_owned(),
                     record_num: self.record_num,
@@ -115,12 +118,12 @@ mod test {
         let re = Regex::new("o").unwrap();
         assert_eq!(
             vec![
-                Record::new("one\n", 1, 1),
-                Record::new("two\nthree\n", 2, 2),
-                Record::new("four\nfive", 3, 4),
+                Record::new("one\nzzzz\n", 1, 1),
+                Record::new("two\nthree\n", 2, 3),
+                Record::new("four\nfive", 3, 5),
             ],
             to_records(
-                "one
+                "one\nzzzz
 two\nthree
 four\nfive",
                 &re
