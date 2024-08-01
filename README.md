@@ -4,6 +4,9 @@
 of text, but not always. Since `grep` only understands lines of text, this can require some gymnastics to extract full
 log records.
 
+`lgrep` is not a log _parser_; it merely provides a way to group lines into records. Logs are a common case,
+particularly when stack- or back traces are involved, but any text file can be searched.
+
 ## Install
 
 You can grab binaries from the [latest release](https://github.com/barneyb/lgrep/releases/latest), for supported
@@ -114,19 +117,37 @@ May as well abuse color support as well, using background for error and foregrou
 ## Log Format
 
 If your log records don't start with a timestamp, use `--log-pattern` to override the default "start of record" pattern.
-Each line of the input which matches the pattern starts a new record. If you want `lgrep` to behave like `grep`, pass
-`--log-pattern=` to match every line, and therefore equate records with lines. If your application consistently formats
-its various logs in a different way, the `LGREP_LOG_PATTERN` environment variable can be used instead of
-supplying `--log-pattern` all over the place. The option still takes precedence, for ad hoc use.
+Each line of the input which matches the pattern starts a new record. If your application consistently formats its
+various logs in a different way, the `LGREP_LOG_PATTERN` environment variable can be used instead of supplying
+`--log-pattern` all over the place. The option still takes precedence, for ad hoc use.
+
+Until the log pattern matches the first time `lgrep` will treat each line of text as its own record. This allows using
+`lgrep` as a normal `grep` for non-log files. If you have a non-log file which happens to have leading timestamps that
+_don't_ indicate log records, pass either `--log-pattern=` so every line is a record, or some other pattern that matches
+zero lines.
+
+As a non-log example, print `Cargo.toml` tables (which start with `[name-of-table]`) that reference `shadow-rs`:
+
+```
+% lgrep --log-pattern='^\[.+\]' shadow-rs Cargo.toml
+[dependencies]
+anyhow = "1.0.86"
+clap = { version = "4.5.9", features = ["derive"] }
+is-terminal = "0.4.12"
+regex-automata = "0.4.7"
+shadow-rs = "0.30.0"
+
+[build-dependencies]
+shadow-rs = "0.30.0"
+```
 
 ## Compressed Logs
 
 > ⚠️This feature is not available on Windows. You must decompress the logs yourself. If you have a Windows environment
 > and know Rust, a PR addressing this would be very welcome!
 
-`lgrep` transparently supports compressed inputs using compression utilities available on your `$PATH`. This means there
-is process overhead, as well as decompression overhead, but it's still _much_ faster than `zgrep`. To demonstrate,
-compress `app.log` a couple ways:
+`lgrep` transparently supports compressed inputs using (de)compression utilities available on your `$PATH`. To
+demonstrate, compress `app.log` a couple ways:
 
 ```
 % gzip -k app.log
@@ -154,7 +175,7 @@ Whether named on the command line or streamed, `lgrep` will treat them equivalen
 ## Performance
 
 At my day job, I had an error id (`b2f444a1-918b-4dd7-994f-990097dd4faa`), and needed to get the corresponding stack
-trace out of our application logs. The error was known to have occurred on one of six JVMs, and during hour 15 of
+trace out of some application logs. The error was known to have occurred on one of six JVMs, and during hour 15 of
 2024-07-06. This was my starting point, on an 2019 Intel MBP running macOS Sonoma 14.5:
 
 ```
@@ -217,4 +238,4 @@ lgrep b2f444a1-918b-4dd7-994f-990097dd4faa   0.49s user 0.12s system 98% cpu 0.6
 Looks like it's actually `grep` that is slow, and `lgrep` parallelizes between decompression and searching. The
 decompression overhead is about half a second for both `lgrep` and `zgrep`, which approximates `gunzip`'s runtime.
 
-This obviously isn't a formal benchmark, just a quick comparison, but fairly suggestive nonetheless.
+A quick comparison, not a formal benchmark, but fairly suggestive nonetheless.
