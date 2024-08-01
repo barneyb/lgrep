@@ -4,6 +4,8 @@ use clap::{ColorChoice, CommandFactory, Parser};
 use crate::Exit;
 use crate::Exit::Help;
 
+shadow_rs::shadow!(build);
+
 #[cfg(not(target_os = "windows"))]
 const COMPRESSED_FILES: &str = "COMPRESSED FILES:
 \n\
@@ -28,7 +30,8 @@ const BASE_LONG_HELP: &str = "ENVIRONMENT:
 
 #[derive(Debug, Parser)]
 #[command(
-    version,
+    version = build::SHORT_VERSION,
+    long_version = build::LONG_VERSION,
     about,
     author,
     arg_required_else_help = true,
