@@ -64,7 +64,7 @@ jobs:
           echo "binary       = ${{ matrix.binary }}"
           which strip && strip ${{ matrix.binary }} || echo "no strip..."
           cargo run --release --quiet -- --version
-          echo "version=`cargo run --release --quiet -- --version | cut -d ' ' -f 2`" >> "$GITHUB_OUTPUT"
+          echo "version=`cargo run --release --quiet -- -V | cut -d ' ' -f 2 | cut -d - -f 1`" >> "$GITHUB_OUTPUT"
       - name: Upload Release Binary.
         uses: actions/upload-artifact@v4
         with:
