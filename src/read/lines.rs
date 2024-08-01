@@ -41,6 +41,9 @@ impl Iterator for Lines {
                     self.eof = true;
                     return None;
                 }
+                if text.ends_with('\n') {
+                    text.pop();
+                }
                 self.line_num += 1;
                 Some(Ok(Line {
                     text,
@@ -79,8 +82,8 @@ mod test {
             .collect();
         assert_eq!(
             vec![
-                Line::new("one\n", 1),
-                Line::new("two\n", 2),
+                Line::new("one", 1),
+                Line::new("two", 2),
                 Line::new("three", 3),
             ],
             lines

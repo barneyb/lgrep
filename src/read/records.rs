@@ -39,6 +39,7 @@ pub(crate) struct Record {
 
 impl Record {
     pub(crate) fn push_line(&mut self, line: &Line) {
+        self.text.push('\n');
         self.text.push_str(&line.text);
     }
 }
@@ -118,8 +119,8 @@ mod test {
         let re = Regex::new("o").unwrap();
         assert_eq!(
             vec![
-                Record::new("one\nzzzz\n", 1, 1),
-                Record::new("two\nthree\n", 2, 3),
+                Record::new("one\nzzzz", 1, 1),
+                Record::new("two\nthree", 2, 3),
                 Record::new("four\nfive", 3, 5),
             ],
             to_records(
@@ -137,10 +138,10 @@ four\nfive",
         let re = Regex::new(r"LOG").unwrap();
         assert_eq!(
             vec![
-                Record::new("one, thee father\n", 1, 1),
-                Record::new("two, thee mother\n", 2, 2),
-                Record::new("LOG: three\nfour\n", 3, 3),
-                Record::new("LOG: five\nsix\n", 4, 5),
+                Record::new("one, thee father", 1, 1),
+                Record::new("two, thee mother", 2, 2),
+                Record::new("LOG: three\nfour", 3, 3),
+                Record::new("LOG: five\nsix", 4, 5),
             ],
             to_records(
                 "one, thee father

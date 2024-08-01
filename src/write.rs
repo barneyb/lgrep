@@ -63,7 +63,7 @@ impl<'a> LgrepWrite<'a> {
             !self.line_numbers,
             "line numbers and counts together makes no sense"
         );
-        self.spew(filename, &format!("{count}\n"), 0)
+        self.spew(filename, &count.to_string(), 0)
     }
 
     pub(crate) fn write_record_with_matches(
@@ -119,7 +119,7 @@ impl<'a> LgrepWrite<'a> {
         text: &str,
         first_line: usize,
     ) -> std::io::Result<()> {
-        let lines = text.split_inclusive('\n');
+        let lines = text.split('\n');
         let mut separator = ':';
         let mut line_num = first_line;
         for l in lines {
@@ -142,7 +142,7 @@ impl<'a> LgrepWrite<'a> {
                     write!(self.sink, "{separator}")?;
                 }
             }
-            write!(self.sink, "{l}")?;
+            writeln!(self.sink, "{l}")?;
             if self.sink.buffer().len() >= FLUSH_BUFFER_AT {
                 self.sink.flush()?
             }
