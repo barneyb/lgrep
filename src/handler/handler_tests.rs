@@ -279,7 +279,7 @@ three
 four",
     );
     assert_eq!(
-        vec!["spiffy.txt:one\n", "spiffy.txt:two\n", "spiffy.txt:four",],
+        vec!["spiffy.txt:one\n", "spiffy.txt:two\n", "spiffy.txt:four\n",],
         mac.records
     );
     assert_eq!(3, mac.flush_count);
@@ -303,7 +303,7 @@ two
 three
 four",
     );
-    assert_eq!(vec!["spiffy.txt:3:three\nspiffy.txt-4-four"], mac.records);
+    assert_eq!(vec!["spiffy.txt:3:three\nspiffy.txt-4-four\n"], mac.records);
     assert_eq!(1, mac.flush_count);
     assert_eq!(Some(Exit::Match), mac.exit);
 }
@@ -329,7 +329,8 @@ four'n'stuff",
     assert_eq!(
         vec![
         "\u{1b}[35mspiffy.txt\u{1b}[0m\u{1b}[36m:\u{1b}[0m\u{1b}[32m3\u{1b}[0m\u{1b}[36m:\u{1b}[0mth\u{1b}[1m\u{1b}[31mr\u{1b}[0mee
-\u{1b}[35mspiffy.txt\u{1b}[0m\u{1b}[36m-\u{1b}[0m\u{1b}[32m4\u{1b}[0m\u{1b}[36m-\u{1b}[0mfou\u{1b}[1m\u{1b}[31mr\u{1b}[0m'n'stuff"],
+\u{1b}[35mspiffy.txt\u{1b}[0m\u{1b}[36m-\u{1b}[0m\u{1b}[32m4\u{1b}[0m\u{1b}[36m-\u{1b}[0mfou\u{1b}[1m\u{1b}[31mr\u{1b}[0m'n'stuff
+"],
         mac.records
     );
     assert_eq!(1, mac.flush_count);
