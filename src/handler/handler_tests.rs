@@ -338,6 +338,33 @@ four'n'stuff",
 }
 
 #[test]
+fn color_multiline_match() {
+    let handler = Handler {
+        pattern_set: Regex::new(r"XXX\nYYY").unwrap(),
+        log_pattern: Regex::new(r"e").unwrap(),
+        color_mode: ColorChoice::Always,
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run(
+        &handler,
+        "one
+two
+threeXXX
+YYYfour",
+    );
+    assert_eq!(
+        vec![
+            "three\u{1b}[1m\u{1b}[31mXXX\u{1b}[0m
+\u{1b}[1m\u{1b}[31mYYY\u{1b}[0mfour
+"
+        ],
+        mac.records
+    );
+    assert_eq!(1, mac.flush_count);
+    assert_eq!(Some(Exit::Match), mac.exit);
+}
+
+#[test]
 fn filenames_final_newline() {
     let handler = Handler {
         pattern_set: Regex::new(r"r").unwrap(),

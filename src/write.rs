@@ -81,7 +81,13 @@ impl<'a> LgrepWrite<'a> {
                     if m.start() > thru {
                         text.push_str(&record.text[thru..m.start()]);
                     }
-                    text.push_str(&format!("{}{}{0:#}", s, &record.text[m.start()..m.end()]));
+                    for line in record.text[m.start()..m.end()].split_inclusive('\n') {
+                        if let Some(bare_line) = line.strip_suffix('\n') {
+                            text.push_str(&format!("{}{}{0:#}\n", s, bare_line));
+                        } else {
+                            text.push_str(&format!("{}{}{0:#}", s, line));
+                        }
+                    }
                     thru = m.end();
                 }
                 if thru < record.text.len() {
