@@ -26,6 +26,7 @@ pub(crate) struct Handler {
     invert_match: bool,
     counts: bool,
     color_mode: ColorChoice,
+    quiet: bool,
     stdin_label: Option<String>,
     log_pattern: Regex,
     start: Option<Regex>,
@@ -62,9 +63,15 @@ impl Handler {
             let source = Source::new(self.display_name_for_filename(f), reader);
             match self.process_file(source, sink)? {
                 Exit::Terminate => {
-                    return Ok(Exit::Terminate);
+                    exit = Exit::Terminate;
+                    break;
                 }
-                Exit::Match => exit = Exit::Match,
+                Exit::Match => {
+                    exit = Exit::Match;
+                    if self.quiet {
+                        break;
+                    }
+                }
                 _ => {}
             }
         }
@@ -107,7 +114,7 @@ impl Handler {
                         }
                     }
                     if self.invert_match ^ self.pattern_set.is_match(&r.text) {
-                        if !self.counts {
+                        if !self.counts && !self.quiet {
                             if needs_matches {
                                 sink.write_record_with_matches(
                                     filename,
@@ -133,11 +140,12 @@ impl Handler {
     }
 
     fn is_max_reached(&self, match_count: usize) -> bool {
-        if let Some(mc) = self.max_count {
-            match_count >= mc
-        } else {
-            false
-        }
+        self.quiet
+            || if let Some(mc) = self.max_count {
+                match_count >= mc
+            } else {
+                false
+            }
     }
 
     fn has_start(&self) -> bool {
@@ -203,6 +211,7 @@ impl Handler {
             counts: cli.count,
             line_numbers: cli.line_number && !cli.count,
             color_mode: cli.color,
+            quiet: cli.quiet,
             stdin_label: cli.label,
             log_pattern,
             start,
@@ -222,6 +231,7 @@ impl Handler {
             invert_match: false,
             counts: false,
             color_mode: ColorChoice::Auto,
+            quiet: false,
             stdin_label: None,
             log_pattern: Regex::new(DEFAULT_LOG_PATTERN).unwrap(),
             start: None,
