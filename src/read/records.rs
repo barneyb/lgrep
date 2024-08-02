@@ -61,9 +61,9 @@ impl<'a> Iterator for Records<'a> {
                     self.before_first_record = false;
                 }
                 Record {
-                    text: l.text.to_owned(),
                     record_num: self.record_num,
                     first_line: l.line_num,
+                    text: l.text,
                 }
             }
         };
