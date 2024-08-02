@@ -129,7 +129,7 @@ pub(crate) struct Cli {
     /// Be careful if you pipe a multi-file `lgrep` into another `lgrep`! By default, the second
     /// `lgrep` will receive filename-prefixed lines, which your log pattern must gracefully handle.
     /// The default pattern accounts for this.
-    #[arg(long, value_name = "PATTERN", long_help = "")]
+    #[arg(long, value_name = "PATTERN")]
     pub log_pattern: Option<String>,
 
     /// Ignore records until this pattern is found in a file.
