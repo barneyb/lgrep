@@ -108,6 +108,14 @@ pub(crate) struct Cli {
     )]
     pub color: ColorChoice,
 
+    /// Quiet; do not write anything to standard output.
+    ///
+    /// Exit immediately with zero status if any match is found, making searches potentially less
+    /// expensive. Using --quiet is preferable to redirecting to `/dev/null` for this reason, even
+    /// though their behavior is basically equivalent.
+    #[arg(short, long, visible_alias = "silent")]
+    pub quiet: bool,
+
     /// Pattern identifying the start of a log record.
     ///
     /// By default, assumes log records start with an ISO-8601-ish datetime with sub-second
@@ -208,6 +216,7 @@ impl Cli {
             count: false,
             label: None,
             color: ColorChoice::Auto,
+            quiet: false,
             log_pattern: None,
             start: None,
             end: None,

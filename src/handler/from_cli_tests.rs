@@ -145,6 +145,7 @@ fn passthroughs() {
         invert_match: true,
         count: true,
         color: ColorChoice::Always,
+        quiet: true,
         label: Some("goat".to_owned()),
         ..Cli::empty()
     })
@@ -153,5 +154,6 @@ fn passthroughs() {
     assert!(h.invert_match);
     assert!(h.counts);
     assert_eq!(ColorChoice::Always, h.color_mode);
+    assert!(h.quiet);
     assert_eq!(Some("goat".to_owned()), h.stdin_label);
 }

@@ -547,3 +547,25 @@ four
     assert_eq!("2\n", mac.to_string());
     assert_eq!(Some(Exit::Match), mac.exit);
 }
+
+#[test]
+fn quiet_match() {
+    let handler = Handler {
+        quiet: true,
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run(&handler, "aleph\nbob\ncow\ndavid");
+    assert_eq!("", mac.to_string());
+    assert_eq!(Some(Exit::Match), mac.exit);
+}
+
+#[test]
+fn quiet_no_match() {
+    let handler = Handler {
+        quiet: true,
+        ..Handler::empty()
+    };
+    let mac = MatchesAndCount::run(&handler, "bob\ncow");
+    assert_eq!("", mac.to_string());
+    assert_eq!(Some(Exit::NoMatch), mac.exit);
+}
