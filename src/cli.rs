@@ -92,7 +92,7 @@ pub(crate) struct Cli {
     #[arg(long)]
     pub label: Option<String>,
 
-    /// Color output, according to a subset of `GREP_COLOR`.
+    /// Color output, according to a subset of `GREP_COLORS`.
     ///
     /// Surround the matched (non-empty) strings and file names with escape sequences to display
     /// them in color on the terminal. The colors are defined by the environment variable
