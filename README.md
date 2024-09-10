@@ -5,7 +5,7 @@ of text, but not always. Since `grep` only understands lines of text, this can r
 log records.
 
 `lgrep` is not a log _parser_; it merely provides a way to group lines into records. Logs are a common case,
-particularly when stack- or back traces are involved, but any text file can be searched.
+particularly when stack- or back-traces are involved, but any text file can be searched.
 
 ## Install
 
