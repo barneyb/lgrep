@@ -55,7 +55,7 @@ impl Iterator for Lines {
 }
 
 impl Lines {
-    pub(crate) fn records(self, log_pattern: &Regex) -> Records {
+    pub(crate) fn records(self, log_pattern: &Regex) -> Records<'_> {
         Records::new(self, log_pattern)
     }
 }

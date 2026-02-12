@@ -11,7 +11,7 @@ pub(crate) struct Source<'a> {
 }
 
 impl<'a> Source<'a> {
-    pub(crate) fn new(filename: &str, reader: Box<dyn BufRead>) -> Source {
+    pub(crate) fn new(filename: &str, reader: Box<dyn BufRead>) -> Source<'_> {
         Source { filename, reader }
     }
 
@@ -19,7 +19,7 @@ impl<'a> Source<'a> {
         Lines::new(self.reader)
     }
 
-    pub(crate) fn records(self, log_pattern: &Regex) -> Records {
+    pub(crate) fn records(self, log_pattern: &Regex) -> Records<'_> {
         self.lines().records(log_pattern)
     }
 }

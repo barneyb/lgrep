@@ -11,7 +11,7 @@ pub(crate) struct Records<'a> {
 }
 
 impl<'a> Records<'a> {
-    pub(crate) fn new(lines: Lines, log_pattern: &Regex) -> Records {
+    pub(crate) fn new(lines: Lines, log_pattern: &Regex) -> Records<'_> {
         Records {
             lines,
             log_pattern,
